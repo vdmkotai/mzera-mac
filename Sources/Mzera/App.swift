@@ -2,7 +2,7 @@ import AppKit
 import Metal
 
 final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
-  var window: NSWindow!
+  var window: ViewerWindow!
   var render: RenderView!
   private var cache: MediaCache!
   private var catalog: Catalog!
@@ -39,6 +39,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   private let sound = NSButton(title: "Sound off", target: nil, action: nil)
   private let pause = NSButton(title: "Pause", target: nil, action: nil)
   private let scroller = NSScroller()
+  private let toolbar = NSStackView()
+  private var windowedRenderConstraints: [NSLayoutConstraint] = []
+  private var fullscreenRenderConstraints: [NSLayoutConstraint] = []
+  private var panelsHidden = false
   private var statsTimer: Timer?
   private var loadError: String?
   private var firstContent = false
@@ -147,20 +151,33 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     menu.addItem(viewItem)
     let view = NSMenu(title: "View")
     viewItem.submenu = view
-    view.addItem(withTitle: "Gallery", action: #selector(showGallery), keyEquivalent: "g").target =
+    view.addItem(
+      withTitle: "Gallery / viewer (G)", action: #selector(toggleGallery), keyEquivalent: "g"
+    ).target =
       self
-    view.addItem(withTitle: "Full screen", action: #selector(fullscreen), keyEquivalent: "f")
-      .target = self
-    view.addItem(withTitle: "Keyboard shortcuts", action: #selector(help), keyEquivalent: "/")
+    view.addItem(
+      withTitle: "Show / hide panels (T)", action: #selector(togglePanels), keyEquivalent: ""
+    ).target = self
+    view.addItem(
+      withTitle: "Full screen without panels (F)", action: #selector(fullscreen), keyEquivalent: "f"
+    )
+    .target = self
+    let standardFullscreen = view.addItem(
+      withTitle: "Toggle full screen", action: #selector(fullscreen), keyEquivalent: "f")
+    standardFullscreen.target = self
+    standardFullscreen.keyEquivalentModifierMask = [.command, .control]
+    view.addItem(withTitle: "Keyboard shortcuts (H)", action: #selector(help), keyEquivalent: "/")
       .target = self
     NSApp.mainMenu = menu
   }
   private func buildWindow() {
-    window = NSWindow(
+    window = ViewerWindow(
       contentRect: NSRect(x: 0, y: 0, width: 1280, height: 850),
       styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false
     )
     window.title = "Mzera"
+    window.backgroundColor = .black
+    window.onToggleFullscreen = { [weak self] in self?.fullscreen() }
     window.minSize = NSSize(width: 760, height: 450)
     window.center()
     window.delegate = self
@@ -171,7 +188,6 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       self?.window.makeFirstResponder(self?.render)
     }
     window.contentView = content
-    let toolbar = NSStackView()
     toolbar.orientation = .horizontal
     toolbar.spacing = 8
     toolbar.edgeInsets = NSEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
@@ -180,6 +196,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     toolbar.addArrangedSubview(button("Open…", #selector(chooseFolder)))
     toolbar.addArrangedSubview(button("Gallery", #selector(showGallery)))
+    toolbar.toolTip = "G: gallery/viewer · T: hide panels · F: full screen · H: all shortcuts"
+    let fullscreenButton = button("Full screen", #selector(fullscreen))
+    fullscreenButton.toolTip = "F / ⌘F / ⌃⌘F: image only on a black screen. Esc: exit."
+    toolbar.addArrangedSubview(fullscreenButton)
     grouping.target = self
     grouping.action = #selector(changeGrouping)
     grouping.selectedSegment = grouped ? 1 : 0
@@ -196,6 +216,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     toolbar.addArrangedSubview(filtering)
     sound.target = self
     sound.action = #selector(toggleSound)
+    sound.toolTip = "V: sound on/off"
     sound.title = playback.muted ? "Sound off" : "Sound on"
     toolbar.addArrangedSubview(sound)
     pause.target = self
@@ -214,24 +235,32 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       view.translatesAutoresizingMaskIntoConstraints = false
       content.addSubview(view)
     }
-    NSLayoutConstraint.activate([
-      toolbar.topAnchor.constraint(equalTo: content.topAnchor),
-      toolbar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-      toolbar.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-      toolbar.heightAnchor.constraint(equalToConstant: 48),
+    windowedRenderConstraints = [
       render.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
-      render.leadingAnchor.constraint(equalTo: content.leadingAnchor),
       render.trailingAnchor.constraint(equalTo: scroller.leadingAnchor),
       render.bottomAnchor.constraint(equalTo: status.topAnchor, constant: -6),
-      scroller.widthAnchor.constraint(equalToConstant: 14),
-      scroller.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-      scroller.topAnchor.constraint(equalTo: render.topAnchor),
-      scroller.bottomAnchor.constraint(equalTo: render.bottomAnchor),
-      status.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
-      status.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
-      status.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -7),
-      status.heightAnchor.constraint(equalToConstant: 16),
-    ])
+    ]
+    fullscreenRenderConstraints = [
+      render.topAnchor.constraint(equalTo: content.topAnchor),
+      render.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+      render.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+    ]
+    NSLayoutConstraint.activate(
+      windowedRenderConstraints + [
+        toolbar.topAnchor.constraint(equalTo: content.topAnchor),
+        toolbar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+        toolbar.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+        toolbar.heightAnchor.constraint(equalToConstant: 48),
+        render.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+        scroller.widthAnchor.constraint(equalToConstant: 14),
+        scroller.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+        scroller.topAnchor.constraint(equalTo: render.topAnchor),
+        scroller.bottomAnchor.constraint(equalTo: render.bottomAnchor),
+        status.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
+        status.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
+        status.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -7),
+        status.heightAnchor.constraint(equalToConstant: 16),
+      ])
   }
   private var current: MediaEntry? {
     render.entries.indices.contains(render.selected) ? render.entries[render.selected] : nil
@@ -251,6 +280,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
   }
   func openRoot(_ url: URL, restore: Bool = false) {
+    if window.isImmersive { setFullscreen(false) }
     sortRunning = false
     rootCatalogReady = false
     sortToken.cancel()
@@ -485,6 +515,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
   }
   @objc func showGallery() {
+    if window.isImmersive { setFullscreen(false) }
     playback.stop()
     animationPath = nil
     loadError = nil
@@ -497,18 +528,64 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     scheduleSave()
     render.setAccessibilityLabel("Photo gallery")
   }
+  @objc private func toggleGallery() {
+    if render.viewer { showGallery() } else { openViewer(render.selected) }
+  }
+  @objc private func togglePanels() {
+    guard !window.isImmersive else { return }  // Full screen always stays clean.
+    panelsHidden.toggle()
+    updateChrome()
+    window.makeFirstResponder(render)
+  }
   private func key(_ event: NSEvent) -> Bool {
     let command = event.modifierFlags.contains(.command)
+    let shift = event.modifierFlags.contains(.shift)
+    let option = event.modifierFlags.contains(.option)
+    let plain = event.modifierFlags.intersection([.command, .control, .option]).isEmpty
+    if plain {
+      // Physical keys keep working when the input layout is Russian.
+      switch event.keyCode {
+      case 5:
+        toggleGallery()
+        return true  // G
+      case 17:
+        togglePanels()
+        return true  // T
+      case 3:
+        fullscreen()
+        return true  // F
+      case 46:  // M: same grouping toggle as Linux Mzera.
+        grouping.selectedSegment = grouped ? 0 : 1
+        changeGrouping()
+        return true
+      case 9:
+        toggleSound()
+        return true  // V
+      case 31:
+        chooseFolder()
+        return true  // O
+      case 4, 44:
+        help()
+        return true  // H / ?
+      case 13:  // W: fit / actual pixels.
+        render.zoom = render.zoom == nil ? 1 / window.backingScaleFactor : nil
+        render.pan = .zero
+        refreshRequests()
+        render.needsDisplay = true
+        return true
+      default: break
+      }
+    }
     switch event.keyCode {
     case 53:
-      if render.viewer {
+      if window.isImmersive {
+        setFullscreen(false)
+      } else if render.viewer {
         showGallery()
-      } else if window.styleMask.contains(.fullScreen) {
-        fullscreen()
       }
       return true
     case 36:
-      if !render.viewer { openViewer(render.selected) }
+      toggleGallery()
       return true
     case 49:
       if render.viewer && (current?.isVideo == true || animationPath != nil) {
@@ -516,28 +593,32 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       } else if !render.viewer {
         openViewer(render.selected)
       } else {
-        move(1)
+        move(shift ? -1 : 1)
       }
       return true
     case 123:
-      if command && render.viewer && current?.isVideo == true {
+      if option {
+        selectBoundary(0)
+      } else if (command || shift) && render.viewer && current?.isVideo == true {
         playback.seek(by: -5)
       } else {
         move(-1)
       }
       return true
     case 124:
-      if command && render.viewer && current?.isVideo == true {
+      if option {
+        selectBoundary(render.entries.count - 1)
+      } else if (command || shift) && render.viewer && current?.isVideo == true {
         playback.seek(by: 5)
       } else {
         move(1)
       }
       return true
     case 125:
-      move(render.viewer ? 1 : render.layout.columns)
+      if option { movePage(1) } else { move(render.viewer ? 1 : render.layout.columns) }
       return true
     case 126:
-      move(render.viewer ? -1 : (-render.layout.columns))
+      if option { movePage(-1) } else { move(render.viewer ? -1 : (-render.layout.columns)) }
       return true
     case 115:
       selectBoundary(0)
@@ -546,20 +627,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       selectBoundary(render.entries.count - 1)
       return true
     case 116:
-      move(-(max(1, Int(render.bounds.height / render.layout.stride)) * render.layout.columns))
+      movePage(-1)
       return true
     case 121:
-      move(max(1, Int(render.bounds.height / render.layout.stride)) * render.layout.columns)
+      movePage(1)
       return true
     default: break
-    }
-    if event.charactersIgnoringModifiers == "f" {
-      fullscreen()
-      return true
-    }
-    if event.charactersIgnoringModifiers == "m" {
-      toggleSound()
-      return true
     }
     if event.charactersIgnoringModifiers == "1" {
       render.zoom = 1 / window.backingScaleFactor
@@ -576,11 +649,19 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       return true
     }
     if event.charactersIgnoringModifiers == "+" || event.charactersIgnoringModifiers == "=" {
+      if render.viewer {
+        render.magnify(by: 0.2)
+        return true
+      }
       render.tile = min(300, render.tile + 20)
       render.rebuild()
       return true
     }
     if event.charactersIgnoringModifiers == "-" {
+      if render.viewer {
+        render.magnify(by: -1.0 / 6)
+        return true
+      }
       render.tile = max(90, render.tile - 20)
       render.rebuild()
       return true
@@ -588,6 +669,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     return false
   }
   private func move(_ delta: Int) { selectBoundary(render.selected + delta) }
+  private func movePage(_ direction: Int) {
+    let step =
+      render.viewer
+      ? 10 : max(1, Int(render.bounds.height / render.layout.stride)) * render.layout.columns
+    move(direction * step)
+  }
   private func selectBoundary(_ index: Int) {
     selectionChanged = true
     guard !render.entries.isEmpty else { return }
@@ -631,7 +718,30 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     pause.title = playback.paused ? "Play" : "Pause"
     window.makeFirstResponder(render)
   }
-  @objc private func fullscreen() { window.toggleFullScreen(nil) }
+  @objc private func fullscreen() {
+    if !window.isImmersive, !render.viewer, !render.entries.isEmpty {
+      openViewer(render.selected)
+    }
+    setFullscreen(!window.isImmersive)
+  }
+  private func setFullscreen(_ enabled: Bool) {
+    guard enabled != window.isImmersive else { return }
+    window.setImmersive(enabled)
+    updateChrome()
+    window.makeFirstResponder(render)
+  }
+  private func updateChrome() {
+    let hidden = window.isImmersive || panelsHidden
+    NSLayoutConstraint.deactivate(windowedRenderConstraints + fullscreenRenderConstraints)
+    toolbar.isHidden = hidden
+    status.isHidden = hidden
+    scroller.isHidden = hidden || render.viewer
+    render.showHeaders = !hidden
+    NSLayoutConstraint.activate(hidden ? fullscreenRenderConstraints : windowedRenderConstraints)
+    window.contentView?.layoutSubtreeIfNeeded()
+    render.rebuild()
+    refreshRequests()
+  }
   @objc private func rescan() { startScan(progressive: false) }
   private func folderChanged() {
     pendingRescan?.cancel()
@@ -652,7 +762,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     scheduleSave()
   }
   private func updateScroller() {
-    scroller.isHidden = render.viewer
+    scroller.isHidden = render.viewer || window.isImmersive || panelsHidden
     scroller.isEnabled = !render.viewer && render.layout.height > render.bounds.height
     scroller.knobProportion = min(1, render.bounds.height / max(1, render.layout.height))
     scroller.doubleValue = render.offset / max(1, render.layout.height - render.bounds.height)
@@ -761,7 +871,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   @objc private func help() {
     alert(
       "Keyboard shortcuts",
-      "Enter: open image\nEsc / ⌘G: gallery\nArrows: browse\nHome / End, Page Up / Down: jump\nF / ⌘F: full screen\n1: actual pixels · 0: fit\nPinch / ⌘wheel: zoom · drag: pan\n+ / -: thumbnail size\nSpace: pause animation/video\nM: mute · ⌘← / ⌘→: seek video\n⌘O: open folder · ⌘R: refresh"
+      "F: full screen, no panels, #000000 background\nEsc: leave full screen; then return to gallery\nG / Enter: gallery ↔ viewer\nT: show/hide panels in windowed mode\nM: flat ↔ folders · V: sound on/off\nO: open folder · H / ?: this help\nArrows: browse\nOption ↑/↓: page in grid; ±10 in viewer\nOption ←/→: first/last file\nW: fit ↔ 1:1 · 0: fit · 1: actual pixels\n+ / −: zoom in viewer; thumbnail size in grid\nPinch: zoom · drag: pan\nSpace: pause video/animation; next photo\nShift+Space: previous photo\nShift ←/→: seek video ±5 seconds\nLetter shortcuts also work with Russian input."
     )
   }
   @objc private func about() {

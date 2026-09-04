@@ -32,6 +32,7 @@ final class RenderView: MTKView, MTKViewDelegate {
   var offset: Double = 0
   var selected: Int = 0
   var viewer = false
+  var showHeaders = true
   var photo: PreparedImage?
   var video: VideoSurface?
   var zoom: Double? = nil
@@ -88,7 +89,7 @@ final class RenderView: MTKView, MTKViewDelegate {
       region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &pixel, bytesPerRow: 4)
     super.init(frame: .zero, device: device)
     colorPixelFormat = .bgra8Unorm
-    clearColor = MTLClearColorMake(0.065, 0.07, 0.08, 1)
+    clearColor = MTLClearColorMake(0, 0, 0, 1)
     framebufferOnly = true
     enableSetNeedsDisplay = true
     isPaused = true
@@ -260,7 +261,7 @@ final class RenderView: MTKView, MTKViewDelegate {
   }
   private func updateHeaders() {
     var needed: [(String, Double)] = []
-    if grouped {
+    if grouped && showHeaders {
       var i = layout.section(at: offset)
       while i < layout.sections.count && layout.sections[i].y < offset + bounds.height {
         let s = layout.sections[i]
@@ -343,7 +344,7 @@ final class RenderView: MTKView, MTKViewDelegate {
     needsDisplay = true
   }
   override func magnify(with event: NSEvent) { if viewer { magnify(by: event.magnification) } }
-  private func magnify(by amount: Double) {
+  func magnify(by amount: Double) {
     let w = video?.width ?? photo?.width ?? 1
     let h = video?.height ?? photo?.height ?? 1
     zoom = min(
