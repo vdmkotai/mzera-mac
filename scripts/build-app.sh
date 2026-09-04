@@ -7,6 +7,14 @@ STAGE=$(mktemp -d "$PWD/dist/.Mzera-build.XXXXXX")
 APP="$STAGE/Mzera.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Mzera "$APP/Contents/MacOS/Mzera"
+ICONSET="$STAGE/AppIcon.iconset"
+mkdir -p "$ICONSET"
+for SIZE in 16 32 128 256 512; do
+  sips -z "$SIZE" "$SIZE" Assets/AppIcon.png --out "$ICONSET/icon_${SIZE}x${SIZE}.png" >/dev/null
+  DOUBLE=$((SIZE * 2))
+  sips -z "$DOUBLE" "$DOUBLE" Assets/AppIcon.png --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 xcrun -sdk macosx metal -c Sources/Mzera/Shaders.metal -o .build/Shaders.air
 xcrun -sdk macosx metallib .build/Shaders.air -o "$APP/Contents/Resources/Shaders.metallib"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -17,9 +25,10 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleIdentifier</key><string>local.mzera.mac</string>
 <key>CFBundleName</key><string>Mzera</string>
 <key>CFBundleDisplayName</key><string>Mzera</string>
+<key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1.0</string>
-<key>CFBundleVersion</key><string>1</string>
+<key>CFBundleShortVersionString</key><string>0.1.1</string>
+<key>CFBundleVersion</key><string>2</string>
 <key>LSMinimumSystemVersion</key><string>26.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
@@ -44,6 +53,6 @@ except BaseException:
     raise
 # Existing processes keep their old inodes; never truncate a running executable.
 if backup.exists():shutil.rmtree(backup)
-staged.parent.rmdir()
+shutil.rmtree(staged.parent)
 print('Built '+str(destination))
 PY

@@ -1,3 +1,4 @@
+import AppKit
 import CMedia
 import CoreGraphics
 import ImageIO
@@ -7,6 +8,36 @@ import XCTest
 @testable import Mzera
 
 final class CoreTests: XCTestCase {
+  func testFolderDropAcceptsOneDirectoryAndRejectsFilesAndMultipleRoots() throws {
+    let root = try temporary()
+    let file = root.appendingPathComponent("image.png")
+    try writeImage(file)
+    let board = NSPasteboard.withUniqueName()
+    defer { board.releaseGlobally() }
+    board.writeObjects([root as NSURL])
+    XCTAssertEqual(FolderDropView.folder(from: board), root.standardizedFileURL)
+    board.clearContents()
+    board.writeObjects([file as NSURL])
+    XCTAssertNil(FolderDropView.folder(from: board))
+    board.clearContents()
+    board.writeObjects([root as NSURL, root.appendingPathComponent("missing") as NSURL])
+    XCTAssertNil(FolderDropView.folder(from: board))
+  }
+  func testFolderDropRejectsTextRemoteURLAndVanishedDirectory() throws {
+    let root = try temporary().appendingPathComponent("vanished")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let board = NSPasteboard.withUniqueName()
+    defer { board.releaseGlobally() }
+    board.setString(root.path, forType: .string)
+    XCTAssertNil(FolderDropView.folder(from: board))
+    board.clearContents()
+    board.writeObjects([URL(string: "https://example.com/folder")! as NSURL])
+    XCTAssertNil(FolderDropView.folder(from: board))
+    board.clearContents()
+    board.writeObjects([root as NSURL])
+    try FileManager.default.removeItem(at: root)
+    XCTAssertNil(FolderDropView.folder(from: board))
+  }
   func testOversizedResultDoesNotDecodeForever() throws {
     guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
     let root = try temporary()

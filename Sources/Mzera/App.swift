@@ -165,7 +165,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     window.center()
     window.delegate = self
     window.setFrameAutosaveName("MzeraMainWindow")
-    let content = NSView()
+    let content = FolderDropView()
+    content.onDropFolder = { [weak self] url in
+      self?.openRoot(url)
+      self?.window.makeFirstResponder(self?.render)
+    }
     window.contentView = content
     let toolbar = NSStackView()
     toolbar.orientation = .horizontal
