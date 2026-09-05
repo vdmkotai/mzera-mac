@@ -1,0 +1,529 @@
+Sources/Mzera/App.swift:1000:7: warning: call to main actor-isolated instance method 'runModal()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:1000:7: warning: main actor-isolated property 'messageText' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:1001:11: warning: call to main actor-isolated instance method 'terminate' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:1001:5: warning: main actor-isolated var 'NSApp' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:1001:7: warning: call to main actor-isolated instance method 'runModal()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:1002:11: warning: call to main actor-isolated instance method 'terminate' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:1002:5: warning: main actor-isolated var 'NSApp' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:126:9: warning: capture of 'self' with non-Sendable type 'AppController?' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:186:11: warning: main actor-isolated property 'mainMenu' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:186:5: warning: main actor-isolated var 'NSApp' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:189:14: warning: call to main actor-isolated initializer 'init(contentRect:styleMask:backing:defer:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:193:12: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:194:12: warning: main actor-isolated property 'backgroundColor' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:195:12: warning: main actor-isolated property 'onToggleFullscreen' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:196:12: warning: main actor-isolated property 'minSize' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:197:12: warning: call to main actor-isolated instance method 'center()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:198:12: warning: main actor-isolated property 'delegate' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:199:12: warning: call to main actor-isolated instance method 'setFrameAutosaveName' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:200:19: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:201:13: warning: main actor-isolated property 'onDropFolder' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:203:20: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:205:12: warning: main actor-isolated property 'contentView' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:206:13: warning: main actor-isolated property 'orientation' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:207:13: warning: main actor-isolated property 'spacing' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:208:13: warning: main actor-isolated property 'edgeInsets' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:210:7: warning: call to main actor-isolated initializer 'init(title:target:action:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:210:7: warning: sending value of non-Sendable type 'AppController' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:212:13: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:213:13: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:214:13: warning: main actor-isolated property 'toolTip' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:216:22: warning: main actor-isolated property 'toolTip' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:217:13: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:218:14: warning: main actor-isolated property 'target' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:219:14: warning: main actor-isolated property 'action' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:220:14: warning: main actor-isolated property 'selectedSegment' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:221:13: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:222:47: warning: call to main actor-isolated instance method 'addItem(withTitle:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:223:13: warning: call to main actor-isolated instance method 'selectItem(at:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:224:13: warning: main actor-isolated property 'target' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:225:13: warning: main actor-isolated property 'action' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:226:13: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:227:15: warning: call to main actor-isolated instance method 'addItems(withTitles:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:228:15: warning: call to main actor-isolated instance method 'selectItem(at:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:229:15: warning: main actor-isolated property 'target' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:230:15: warning: main actor-isolated property 'action' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:231:13: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:232:11: warning: main actor-isolated property 'target' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:233:11: warning: main actor-isolated property 'action' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:234:11: warning: main actor-isolated property 'toolTip' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:235:11: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:236:13: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:237:11: warning: main actor-isolated property 'target' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:238:11: warning: main actor-isolated property 'action' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:239:13: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:240:16: warning: main actor-isolated property 'lineBreakMode' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:241:16: warning: call to main actor-isolated instance method 'setContentCompressionResistancePriority(_:for:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:242:13: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:243:12: warning: main actor-isolated property 'font' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:244:12: warning: main actor-isolated property 'textColor' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:245:12: warning: main actor-isolated property 'lineBreakMode' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:246:14: warning: main actor-isolated property 'target' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:247:14: warning: main actor-isolated property 'action' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:248:14: warning: main actor-isolated property 'scrollerStyle' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:250:12: warning: main actor-isolated property 'translatesAutoresizingMaskIntoConstraints' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:251:15: warning: call to main actor-isolated instance method 'addSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:254:14: warning: main actor-isolated property 'topAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:254:52: warning: main actor-isolated property 'bottomAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:255:14: warning: main actor-isolated property 'trailingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:255:58: warning: main actor-isolated property 'leadingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:256:14: warning: main actor-isolated property 'bottomAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:256:54: warning: main actor-isolated property 'topAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:259:14: warning: main actor-isolated property 'topAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:259:52: warning: main actor-isolated property 'topAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:260:14: warning: main actor-isolated property 'trailingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:260:57: warning: main actor-isolated property 'trailingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:261:14: warning: main actor-isolated property 'bottomAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:261:55: warning: main actor-isolated property 'bottomAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:265:17: warning: main actor-isolated property 'topAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:265:55: warning: main actor-isolated property 'topAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:266:17: warning: main actor-isolated property 'leadingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:266:59: warning: main actor-isolated property 'leadingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:267:17: warning: main actor-isolated property 'trailingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:267:60: warning: main actor-isolated property 'trailingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:268:17: warning: main actor-isolated property 'heightAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:269:16: warning: main actor-isolated property 'leadingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:269:58: warning: main actor-isolated property 'leadingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:270:18: warning: main actor-isolated property 'widthAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:271:18: warning: main actor-isolated property 'trailingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:271:61: warning: main actor-isolated property 'trailingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:272:18: warning: main actor-isolated property 'topAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:272:55: warning: main actor-isolated property 'topAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:273:18: warning: main actor-isolated property 'bottomAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:273:58: warning: main actor-isolated property 'bottomAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:274:16: warning: main actor-isolated property 'leadingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:274:58: warning: main actor-isolated property 'leadingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:275:16: warning: main actor-isolated property 'trailingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:275:59: warning: main actor-isolated property 'trailingAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:276:16: warning: main actor-isolated property 'bottomAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:276:57: warning: main actor-isolated property 'bottomAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:277:16: warning: main actor-isolated property 'heightAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:281:12: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:281:44: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:281:63: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:281:78: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:284:15: warning: main actor-isolated property 'zoom' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:285:29: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:285:50: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:285:75: warning: main actor-isolated property 'backingScaleFactor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:289:17: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:290:11: warning: main actor-isolated property 'canChooseFiles' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:291:11: warning: main actor-isolated property 'canChooseDirectories' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:292:11: warning: main actor-isolated property 'allowsMultipleSelection' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:293:11: warning: call to main actor-isolated instance method 'beginSheetModal(for:completionHandler:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:293:11: warning: sending value of non-Sendable type '(NSApplication.ModalResponse) -> Void' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:294:41: warning: main actor-isolated property 'url' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:298:15: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:306:12: warning: main actor-isolated property 'firstMediaPresentedTime' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:320:12: warning: main actor-isolated property 'entries' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:321:12: warning: main actor-isolated property 'selected' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:322:12: warning: main actor-isolated property 'viewer' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:323:12: warning: call to main actor-isolated instance method 'resetViewer()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:324:12: warning: main actor-isolated property 'offset' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:331:12: warning: main actor-isolated property 'root' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:332:12: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:334:12: warning: call to main actor-isolated instance method 'rebuild()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:335:12: warning: main actor-isolated property 'stringValue' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:340:17: warning: capture of 'self' with non-Sendable type 'AppController?' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:340:24: warning: capture of 'token' with non-Sendable type 'Cancellation' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:344:15: warning: capture of 'self' with non-Sendable type 'AppController' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:344:20: warning: sending 'self' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:344:35: warning: capture of 'token' with non-Sendable type 'Cancellation' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:344:41: warning: sending 'token' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:376:17: warning: capture of 'self' with non-Sendable type 'AppController?' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:381:68: warning: capture of 'token' with non-Sendable type 'Cancellation' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:381:68: warning: capture of 'token' with non-Sendable type 'Cancellation' in an isolated closure
+Sources/Mzera/App.swift:388:19: warning: capture of 'self' with non-Sendable type 'AppController' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:388:24: warning: sending 'self' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:388:39: warning: capture of 'token' with non-Sendable type 'Cancellation' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:388:45: warning: sending 'token' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:38:15: warning: main actor-isolated default value in a nonisolated context; this is an error in the Swift 6 language mode
+Sources/Mzera/App.swift:395:42: warning: capture of 'self' with non-Sendable type 'AppController' in an isolated closure
+Sources/Mzera/App.swift:39:15: warning: main actor-isolated default value in a nonisolated context; this is an error in the Swift 6 language mode
+Sources/Mzera/App.swift:40:15: warning: main actor-isolated default value in a nonisolated context; this is an error in the Swift 6 language mode
+Sources/Mzera/App.swift:42:15: warning: main actor-isolated default value in a nonisolated context; this is an error in the Swift 6 language mode
+Sources/Mzera/App.swift:438:11: warning: capture of 'self' with non-Sendable type 'AppController' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:438:28: warning: sending 'self' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:43:15: warning: main actor-isolated default value in a nonisolated context; this is an error in the Swift 6 language mode
+Sources/Mzera/App.swift:446:15: warning: capture of 'self' with non-Sendable type 'AppController' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:447:28: warning: sending 'self' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:44:15: warning: main actor-isolated default value in a nonisolated context; this is an error in the Swift 6 language mode
+Sources/Mzera/App.swift:45:15: warning: main actor-isolated default value in a nonisolated context; this is an error in the Swift 6 language mode
+Sources/Mzera/App.swift:46:15: warning: main actor-isolated default value in a nonisolated context; this is an error in the Swift 6 language mode
+Sources/Mzera/App.swift:47:15: warning: main actor-isolated default value in a nonisolated context; this is an error in the Swift 6 language mode
+Sources/Mzera/App.swift:485:24: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:486:23: warning: main actor-isolated property 'tile' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:488:14: warning: capture of 'token' with non-Sendable type 'Cancellation' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:497:42: warning: capture of 'self' with non-Sendable type 'AppController?' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:499:18: warning: capture of 'token' with non-Sendable type 'Cancellation' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:500:11: warning: capture of 'self' with non-Sendable type 'AppController' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:504:19: warning: capture of 'self' with non-Sendable type 'AppController?' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:504:19: warning: reference to captured var 'self' in concurrently-executing code [#SendableClosureCaptures]
+Sources/Mzera/App.swift:504:9: warning: sending 'self' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:511:21: warning: sending 'self' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:513:55: warning: reference to captured var 'layout' in concurrently-executing code [#SendableClosureCaptures]
+Sources/Mzera/App.swift:537:17: warning: capture of 'self' with non-Sendable type 'AppController?' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/App.swift:537:7: warning: sending 'self' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:545:15: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:553:26: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:554:21: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:554:58: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:557:31: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:557:57: warning: main actor-isolated property 'zoom' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:563:28: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:563:58: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:563:81: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:565:29: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:565:56: warning: main actor-isolated property 'thumbnailLimit' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:568:23: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:569:24: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:569:47: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:569:79: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:572:31: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:572:57: warning: main actor-isolated property 'thumbnailLimit' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:576:15: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:579:18: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:583:12: warning: main actor-isolated property 'viewer' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:584:12: warning: main actor-isolated property 'selected' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:585:12: warning: call to main actor-isolated instance method 'resetViewer()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:586:24: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:587:16: warning: main actor-isolated property 'toolTip' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:589:11: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:594:12: warning: call to main actor-isolated instance method 'setAccessibilityLabel' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:597:18: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:601:14: warning: main actor-isolated property 'photo' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:602:14: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:602:14: warning: main actor-isolated property 'photo' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:603:14: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:606:87: warning: main actor-isolated property 'device' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:607:87: warning: main actor-isolated property 'device' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:616:15: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:617:15: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:620:12: warning: main actor-isolated property 'viewer' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:621:12: warning: call to main actor-isolated instance method 'resetViewer()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:621:12: warning: main actor-isolated property 'viewer' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:622:12: warning: call to main actor-isolated instance method 'resetViewer()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:622:12: warning: call to main actor-isolated instance method 'scrollToSelected()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:623:12: warning: call to main actor-isolated instance method 'scrollToSelected()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:627:12: warning: call to main actor-isolated instance method 'setAccessibilityLabel' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:628:12: warning: call to main actor-isolated instance method 'setAccessibilityLabel' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:630:15: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:630:65: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:631:15: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:631:65: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:633:19: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:634:19: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:636:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:637:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:656:18: warning: main actor-isolated property 'selectedSegment' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:657:18: warning: main actor-isolated property 'selectedSegment' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:669:16: warning: main actor-isolated property 'zoom' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:669:30: warning: main actor-isolated property 'zoom' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:669:55: warning: main actor-isolated property 'backingScaleFactor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:670:16: warning: main actor-isolated property 'pan' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:670:16: warning: main actor-isolated property 'zoom' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:670:30: warning: main actor-isolated property 'zoom' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:670:55: warning: main actor-isolated property 'backingScaleFactor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:671:16: warning: main actor-isolated property 'pan' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:672:16: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:673:16: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:679:17: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:680:17: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:681:24: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:682:24: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:689:17: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:690:17: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:691:25: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:692:25: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:692:27: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:693:27: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:700:46: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:701:46: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:708:31: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:709:31: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:709:46: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:710:46: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:716:52: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:716:72: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:717:52: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:717:72: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:719:53: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:719:76: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:720:53: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:720:76: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:725:29: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:726:29: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:736:14: warning: main actor-isolated property 'zoom' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:736:32: warning: main actor-isolated property 'backingScaleFactor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:737:14: warning: main actor-isolated property 'pan' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:737:14: warning: main actor-isolated property 'zoom' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:737:32: warning: main actor-isolated property 'backingScaleFactor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:738:14: warning: main actor-isolated property 'pan' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:739:14: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:740:14: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:743:14: warning: main actor-isolated property 'zoom' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:744:14: warning: main actor-isolated property 'pan' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:744:14: warning: main actor-isolated property 'zoom' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:745:14: warning: main actor-isolated property 'pan' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:746:14: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:747:14: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:750:17: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:751:16: warning: call to main actor-isolated instance method 'magnify(by:anchor:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:751:17: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:752:16: warning: call to main actor-isolated instance method 'magnify(by:anchor:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:754:14: warning: main actor-isolated property 'tile' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:754:37: warning: main actor-isolated property 'tile' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:755:14: warning: call to main actor-isolated instance method 'rebuild()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:755:14: warning: main actor-isolated property 'tile' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:755:37: warning: main actor-isolated property 'tile' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:756:14: warning: call to main actor-isolated instance method 'rebuild()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:759:17: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:760:16: warning: call to main actor-isolated instance method 'magnify(by:anchor:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:760:17: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:761:16: warning: call to main actor-isolated instance method 'magnify(by:anchor:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:763:14: warning: main actor-isolated property 'tile' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:763:36: warning: main actor-isolated property 'tile' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:764:14: warning: call to main actor-isolated instance method 'rebuild()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:764:14: warning: main actor-isolated property 'tile' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:764:36: warning: main actor-isolated property 'tile' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:765:14: warning: call to main actor-isolated instance method 'rebuild()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:769:59: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:770:59: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:772:14: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:773:14: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:773:32: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:773:55: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:773:80: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:774:32: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:774:55: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:774:80: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:778:19: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:779:19: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:779:35: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:780:15: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:780:35: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:780:39: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:781:14: warning: call to main actor-isolated instance method 'markPreparedInput' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:781:15: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:781:39: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:781:49: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:782:14: warning: call to main actor-isolated instance method 'markPreparedInput' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:782:49: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:783:15: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:784:15: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:784:26: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:785:26: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:786:14: warning: main actor-isolated property 'selected' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:787:14: warning: call to main actor-isolated instance method 'scrollToSelected()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:787:14: warning: main actor-isolated property 'selected' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:788:14: warning: call to main actor-isolated instance method 'scrollToSelected()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:791:12: warning: call to main actor-isolated instance method 'interact()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:792:12: warning: call to main actor-isolated instance method 'interact()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:794:24: warning: main actor-isolated property 'selectedSegment' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:795:24: warning: main actor-isolated property 'selectedSegment' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:796:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:797:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:799:45: warning: main actor-isolated property 'indexOfSelectedItem' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:800:45: warning: main actor-isolated property 'indexOfSelectedItem' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:801:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:802:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:804:24: warning: main actor-isolated property 'indexOfSelectedItem' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:805:24: warning: main actor-isolated property 'indexOfSelectedItem' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:806:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:807:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:810:11: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:811:11: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:812:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:813:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:816:11: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:817:11: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:817:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:818:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:820:16: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:820:37: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:820:53: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:821:16: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:821:25: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:821:37: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:821:53: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:822:25: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:823:27: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:824:27: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:826:29: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:827:12: warning: call to main actor-isolated instance method 'setImmersive' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:827:29: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:828:12: warning: call to main actor-isolated instance method 'setImmersive' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:829:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:830:12: warning: call to main actor-isolated instance method 'makeFirstResponder' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:832:25: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:833:25: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:834:13: warning: main actor-isolated property 'isHidden' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:835:12: warning: main actor-isolated property 'isHidden' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:835:13: warning: main actor-isolated property 'isHidden' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:836:12: warning: main actor-isolated property 'isHidden' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:836:14: warning: main actor-isolated property 'isHidden' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:836:42: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:837:12: warning: main actor-isolated property 'showHeaders' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:837:14: warning: main actor-isolated property 'isHidden' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:837:42: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:838:12: warning: main actor-isolated property 'showHeaders' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:839:12: warning: main actor-isolated property 'contentView' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:839:25: warning: call to main actor-isolated instance method 'layoutSubtreeIfNeeded()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:840:12: warning: call to main actor-isolated instance method 'rebuild()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:840:12: warning: main actor-isolated property 'contentView' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:840:25: warning: call to main actor-isolated instance method 'layoutSubtreeIfNeeded()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:841:12: warning: call to main actor-isolated instance method 'rebuild()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:858:35: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:858:58: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:859:21: warning: main actor-isolated property 'hitPart' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:859:35: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:859:58: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:860:21: warning: main actor-isolated property 'hitPart' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:860:33: warning: main actor-isolated property 'offset' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:860:56: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:860:72: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:861:33: warning: main actor-isolated property 'offset' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:861:56: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:861:64: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:861:72: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:861:80: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:862:21: warning: main actor-isolated property 'offset' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:862:33: warning: main actor-isolated property 'offset' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:862:39: warning: main actor-isolated property 'doubleValue' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:862:64: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:862:80: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:863:21: warning: main actor-isolated property 'offset' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:863:39: warning: main actor-isolated property 'doubleValue' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:864:12: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:865:12: warning: main actor-isolated property 'needsDisplay' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:870:14: warning: main actor-isolated property 'isHidden' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:870:32: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:870:49: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:871:14: warning: main actor-isolated property 'isEnabled' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:871:14: warning: main actor-isolated property 'isHidden' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:871:32: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:871:34: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:871:49: warning: main actor-isolated property 'isImmersive' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:871:51: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:871:74: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:872:14: warning: main actor-isolated property 'isEnabled' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:872:14: warning: main actor-isolated property 'knobProportion' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:872:34: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:872:45: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:872:51: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:872:74: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated autoclosure
+Sources/Mzera/App.swift:872:75: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:873:14: warning: main actor-isolated property 'doubleValue' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:873:14: warning: main actor-isolated property 'knobProportion' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:873:35: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:873:45: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:873:58: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:873:75: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:873:81: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:874:14: warning: main actor-isolated property 'doubleValue' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:874:35: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:874:58: warning: main actor-isolated property 'layout' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:874:81: warning: main actor-isolated property 'bounds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:878:19: warning: main actor-isolated property 'stringValue' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:878:53: warning: main actor-isolated property 'stringValue' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:879:19: warning: main actor-isolated property 'stringValue' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:879:24: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:879:53: warning: main actor-isolated property 'stringValue' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:880:24: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:883:74: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:884:15: warning: main actor-isolated property 'stringValue' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:884:44: warning: main actor-isolated property 'stringValue' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:884:74: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:885:15: warning: main actor-isolated property 'stringValue' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:885:27: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:885:44: warning: main actor-isolated property 'stringValue' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:886:14: warning: main actor-isolated property 'isEnabled' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:886:27: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:886:44: warning: main actor-isolated property 'isEnabled' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:887:14: warning: main actor-isolated property 'isEnabled' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:887:44: warning: main actor-isolated property 'isEnabled' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:898:26: warning: main actor-isolated property 'presentationSamples' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:899:26: warning: main actor-isolated property 'presentationSamples' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:903:25: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:903:59: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:903:86: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:904:25: warning: main actor-isolated property 'entries' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:904:59: warning: main actor-isolated property 'selected' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:904:86: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:908:31: warning: main actor-isolated property 'lastDrawMilliseconds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:908:70: warning: main actor-isolated property 'renderedFrames' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:909:31: warning: main actor-isolated property 'lastDrawMilliseconds' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:909:70: warning: main actor-isolated property 'renderedFrames' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:911:35: warning: main actor-isolated property 'screen' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:912:35: warning: main actor-isolated property 'screen' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:913:46: warning: main actor-isolated property 'firstMediaPresentedTime' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:914:46: warning: main actor-isolated property 'firstMediaPresentedTime' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:935:18: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:936:18: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:936:18: warning: main actor-isolated property 'viewer' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:937:18: warning: main actor-isolated property 'offset' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:940:22: warning: main actor-isolated property 'tile' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:941:22: warning: main actor-isolated property 'tile' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:945:22: warning: call to main actor-isolated instance method 'makeKeyAndOrderFront' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:946:22: warning: call to main actor-isolated instance method 'makeKeyAndOrderFront' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:948:17: warning: call to main actor-isolated initializer 'init(contentRect:styleMask:backing:defer:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:949:17: warning: call to main actor-isolated initializer 'init(contentRect:styleMask:backing:defer:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:951:11: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:952:11: warning: main actor-isolated property 'isReleasedWhenClosed' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:952:11: warning: main actor-isolated property 'title' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:953:11: warning: main actor-isolated property 'isReleasedWhenClosed' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:954:17: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:955:11: warning: main actor-isolated property 'orientation' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:955:17: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:956:11: warning: main actor-isolated property 'alignment' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:956:11: warning: main actor-isolated property 'orientation' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:957:11: warning: main actor-isolated property 'alignment' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:957:11: warning: main actor-isolated property 'spacing' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:958:11: warning: main actor-isolated property 'frame' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:958:11: warning: main actor-isolated property 'spacing' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:959:11: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:959:11: warning: main actor-isolated property 'frame' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:959:30: warning: call to main actor-isolated initializer 'init(labelWithString:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:960:11: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:960:18: warning: call to main actor-isolated initializer 'init(value:minValue:maxValue:target:action:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:960:18: warning: sending value of non-Sendable type 'AppController' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:960:30: warning: call to main actor-isolated initializer 'init(labelWithString:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:961:18: warning: call to main actor-isolated initializer 'init(value:minValue:maxValue:target:action:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:961:18: warning: sending value of non-Sendable type 'AppController' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/App.swift:963:11: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:964:11: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:964:12: warning: main actor-isolated property 'widthAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:965:11: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:965:12: warning: main actor-isolated property 'widthAnchor' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:966:11: warning: call to main actor-isolated instance method 'addArrangedSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:966:7: warning: call to main actor-isolated initializer 'init(wrappingLabelWithString:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:967:7: warning: call to main actor-isolated initializer 'init(wrappingLabelWithString:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:970:11: warning: main actor-isolated property 'contentView' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:970:24: warning: call to main actor-isolated instance method 'addSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:971:11: warning: call to main actor-isolated instance method 'center()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:971:11: warning: main actor-isolated property 'contentView' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:971:24: warning: call to main actor-isolated instance method 'addSubview' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:972:11: warning: call to main actor-isolated instance method 'center()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:972:11: warning: call to main actor-isolated instance method 'makeKeyAndOrderFront' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:973:11: warning: call to main actor-isolated instance method 'makeKeyAndOrderFront' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:975:28: warning: main actor-isolated property 'doubleValue' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:976:28: warning: main actor-isolated property 'doubleValue' can not be referenced from a nonisolated context
+Sources/Mzera/App.swift:992:13: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:993:13: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:993:7: warning: main actor-isolated property 'messageText' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:994:7: warning: main actor-isolated property 'informativeText' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:994:7: warning: main actor-isolated property 'messageText' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:995:7: warning: call to main actor-isolated instance method 'beginSheetModal(for:completionHandler:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:995:7: warning: main actor-isolated property 'informativeText' can not be mutated from a nonisolated context
+Sources/Mzera/App.swift:996:7: warning: call to main actor-isolated instance method 'beginSheetModal(for:completionHandler:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:998:13: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:999:13: warning: call to main actor-isolated initializer 'init()' in a synchronous nonisolated context [#ActorIsolatedCall]
+Sources/Mzera/App.swift:999:7: warning: main actor-isolated property 'messageText' can not be mutated from a nonisolated context
+Sources/Mzera/MediaCache.swift:239:19: warning: capture of 'self' with non-Sendable type 'MediaCache?' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/MediaCache.swift:272:11: warning: capture of 'self' with non-Sendable type 'MediaCache' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/MediaCache.swift:272:11: warning: sending 'self' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/MediaCache.swift:278:13: warning: sending 'result' risks causing data races; this is an error in the Swift 6 language mode [#SendingRisksDataRace]
+Sources/Mzera/MediaCache.swift:278:20: warning: capture of 'result' with non-Sendable type 'PreparedImage?' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/MediaCache.swift:305:15: warning: capture of 'self' with non-Sendable type 'MediaCache' in a '@Sendable' closure [#SendableClosureCaptures]
+Sources/Mzera/MediaCache.swift:305:15: warning: capture of 'self' with non-Sendable type 'MediaCache' in an isolated local function; this is an error in the Swift 6 language mode
+Sources/Mzera/MediaCache.swift:318:13: warning: capture of 'self' with non-Sendable type 'MediaCache' in an isolated closure

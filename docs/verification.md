@@ -1,4 +1,6 @@
-# Проверка Mzera 0.1.0
+# Проверка Mzera 0.1.0 (историческая)
+
+Результаты версии 0.2.0 находятся в [разборе ревью](review-response-2026-09-05.md). Ограничения и цифры ниже относятся к первой сборке.
 
 5 сентября 2026. Mac с Apple M5 Pro, 64 ГБ RAM, macOS 26.6.2; Release arm64, Swift 6.3.3, FFmpeg 9.0.1. Это результаты первой локальной версии, а не гарантия задержек для любого файла.
 
@@ -51,4 +53,4 @@ RAW, полноценный HDR, тайловый просмотр огромн�
 
 ## Локальные свидетельства
 
-Подробные журналы лежат в игнорируемой папке `work/`: `tests.log`, `build.log`, `corpus-diagnostic.json`, `video-smoke.json`, `corpus-memory.txt`, `final-navigation-metrics.json`, `warm-start-metrics.json`, `relocated-video-probe.json`. Диагностические JSON с временами не содержат имён файлов коллекции.
+Сохраняемые в Git метрики доступны в [evidence](evidence/README.md), в том числе исторический замер листания. Полные вспомогательные журналы остаются в игнорируемой папке `work/`: `tests.log`, `build.log`, `corpus-diagnostic.json`, `video-smoke.json`, `corpus-memory.txt`, `final-navigation-metrics.json`, `warm-start-metrics.json`, `relocated-video-probe.json`. Диагностические JSON с временами не содержат имён файлов коллекции.

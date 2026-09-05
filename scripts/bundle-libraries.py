@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import re
 
 app=Path(sys.argv[1]).resolve()
 frameworks=app/'Contents/Frameworks'
@@ -18,13 +19,31 @@ def run(*args):
 def dependencies(path):
     return [line.strip().split(' (compatibility')[0] for line in run('otool','-L',str(path)).splitlines()[1:]]
 
+def resolve_dependency(dependency, source):
+    if dependency.startswith(('/usr/lib/', '/System/Library/')):
+        return None
+    if dependency.startswith('/opt/homebrew/'):
+        return Path(dependency).resolve(strict=True)
+    def expand(value):
+        return Path(value.replace('@loader_path', str(source.parent)).replace('@executable_path', str(executable.parent)))
+    if dependency.startswith('@loader_path/'):
+        return expand(dependency).resolve(strict=True)
+    if dependency.startswith('@rpath/'):
+        suffix = dependency[len('@rpath/'):]
+        rpaths = re.findall(r'cmd LC_RPATH\s+cmdsize \d+\s+path (.*?) \(offset', run('otool', '-l', str(source)))
+        candidates = [expand(p) / suffix for p in rpaths] + [source.parent / suffix]
+        for candidate in candidates:
+            if candidate.is_file():
+                return candidate.resolve(strict=True)
+    raise RuntimeError(f'Cannot resolve {dependency} referenced by {source}')
+
 def visit(path,source=None):
     if path in processed:return
     processed.add(path)
     original=dependencies(source or path)
     for dependency in original:
-        if not dependency.startswith('/opt/homebrew/'):continue
-        src=Path(dependency).resolve(strict=True)
+        src=resolve_dependency(dependency, source or path)
+        if src is None:continue
         name=Path(dependency).name
         dst=frameworks/name
         if name in copied and copied[name]!=src:
@@ -42,6 +61,8 @@ run('install_name_tool','-add_rpath','@executable_path/../Frameworks',str(execut
 for name in copied:
     run('codesign','--force','--sign','-',str(frameworks/name))
 for path in [executable]+[frameworks/name for name in copied]:
-    if any(d.startswith('/opt/homebrew/') for d in dependencies(path)):
-        raise RuntimeError(f'Unbundled dependency in {path}')
+    for dependency in dependencies(path):
+        if dependency.startswith(('/usr/lib/', '/System/Library/')):continue
+        if dependency.startswith('@rpath/') and (frameworks/dependency[len('@rpath/'):]).is_file():continue
+        raise RuntimeError(f'Unbundled dependency {dependency} in {path}')
 print(f'Bundled {len(copied)} libraries ({sum((frameworks/n).stat().st_size for n in copied)/1048576:.1f} MiB)')

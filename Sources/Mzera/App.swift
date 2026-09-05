@@ -8,6 +8,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   private var catalog: Catalog!
   private let playback = Playback()
   private var all: [MediaEntry] = []
+  private var allOrderKey: String?
+  private var refreshScheduled = false
   private var root: URL?
   private var scanToken = Cancellation()
   private var sortToken = Cancellation()
@@ -16,7 +18,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   private var scanRunning = false
   private var sortRunning = false
   private var rescanAfter = false
+  private var pendingChanges = Set<FolderWatcher.Change>()
+  private var requiresFullScan = false
   private var scanID = 0, sortID = 0
+  private var completedSortCount = 0, unchangedScanCount = 0
   private let scanner = DispatchQueue(label: "mzera.scanner", qos: .userInitiated)
   private let sorter = DispatchQueue(label: "mzera.sort", qos: .userInitiated)
   private var sortOrder = SortOrder.path
@@ -46,7 +51,6 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   private var statsTimer: Timer?
   private var loadError: String?
   private var firstContent = false
-  private let launchTime = ProcessInfo.processInfo.systemUptime
   private var firstPreparedMS: Double?
   private var folderOpenedAt = CACurrentMediaTime()
   private var settingsWindow: NSWindow?
@@ -69,12 +73,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     sortOrder = SortOrder(rawValue: defaults.integer(forKey: "sort")) ?? .path
     render.tile = Double(defaults.integer(forKey: "tile").clamped(to: 90...300, fallback: 160))
     let savedRAM = defaults.integer(forKey: "photoCacheMiB").clamped(to: 128...3072, fallback: 1024)
-    cache.photos.limit = savedRAM * 1_048_576
+    cache.setPhotoBudget(savedRAM * 1_048_576)
     playback.muted = !defaults.bool(forKey: "sound")
     buildMenu()
     buildWindow()
     render.onViewport = { [weak self] in
-      self?.refreshRequests()
+      self?.scheduleRefresh()
       self?.updateScroller()
       self?.scheduleSave()
     }
@@ -89,11 +93,20 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       guard let self else { return }
       self.render.needsDisplay = true
       if self.render.viewer, self.current?.path == path { self.showPrepared() }
+      if self.render.viewer, let current = self.current,
+        current.path == path, self.cache.failure(current, limit: self.displayLimit) == .budget
+      {
+        self.refreshRequests()
+      }
       self.markFirstContent()
     }
-    playback.onVideo = { [weak self] pixel, full, bt601, hw, _ in
+    playback.onVideo = { [weak self] pixel, full, bt601, bt2020, hw, _ in
       guard let self, self.render.viewer else { return }
-      self.render.showPixel(pixel, fullRange: full, bt601: bt601)
+      guard self.render.showPixel(pixel, fullRange: full, bt601: bt601, bt2020: bt2020) else {
+        self.loadError = "Unsupported video pixel format"
+        self.updateStatus()
+        return
+      }
       self.markFirstContent()
       self.titleField.toolTip = hw ? "VideoToolbox frame" : "Software decoder"
     }
@@ -108,9 +121,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
     window.makeFirstResponder(render)
-    statsTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-      self?.updateStatus()
-      self?.writeMetrics()
+    if CommandLine.arguments.contains("--metrics") {
+      statsTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        self?.updateStatus()
+        self?.writeMetrics()
+      }
     }
     if let index = CommandLine.arguments.firstIndex(of: "--folder"),
       CommandLine.arguments.count > index + 1
@@ -294,11 +309,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     scanID += 1
     sortID += 1
     watcher = nil
+    pendingChanges.removeAll()
+    requiresFullScan = false
     pendingRescan?.cancel()
     playback.stop()
     animationPath = nil
     cache.clear()
     all = []
+    allOrderKey = nil
     render.entries = []
     render.selected = 0
     render.viewer = false
@@ -327,29 +345,37 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         self.rootCatalogReady = true
         if let cached {
           self.all = cached
+          self.allOrderKey = cachedOrder
           self.applyOrder(restoring: true, alreadySorted: cachedOrder == self.currentOrderKey)
         }
         self.startScan(progressive: cached == nil)
-        self.watcher = FolderWatcher(path: rootPath) { [weak self] in self?.folderChanged() }
+        self.watcher = FolderWatcher(path: rootPath) { [weak self] changes in
+          self?.folderChanged(changes)
+        }
       }
     }
   }
-  private func startScan(progressive: Bool) {
+  private func startScan(progressive: Bool, changes: Set<FolderWatcher.Change>? = nil) {
     guard let root else { return }
-    guard rootCatalogReady else { return }
+    guard rootCatalogReady else {
+      rescanAfter = true
+      return
+    }
     if scanRunning {
       rescanAfter = true
+      if let changes { pendingChanges.formUnion(changes) } else { requiresFullScan = true }
       return
     }
     scanRunning = true
     rescanAfter = false
     let token = scanToken
     let id = scanID
+    let previous = all
     let gate = DispatchSemaphore(value: 3)
     scanner.async { [weak self] in
       guard let self else { return }
       var fresh: [MediaEntry] = []
-      let result = Scanner.scan(root: root, cancellation: token) { batch in
+      let collect: ([MediaEntry]) -> Void = { batch in
         fresh.append(contentsOf: batch)
         if progressive {
           while gate.wait(timeout: .now() + 0.02) != .success { if token.cancelled { return } }
@@ -361,15 +387,51 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
             defer { gate.signal() }
             guard self.scanID == id, !token.cancelled else { return }
             self.all.append(contentsOf: batch)
+            self.allOrderKey = nil
             // During initial discovery use arrival order. Final sort runs once, off-main.
             if !self.render.viewer {
-              self.render.entries = self.all
+              let visibleBatch =
+                self.filter == 0
+                ? batch : batch.filter { self.filter == 2 ? $0.isVideo : !$0.isVideo }
+              self.render.entries.append(contentsOf: visibleBatch)
               self.render.grouped = false
               self.render.rebuild()
             }
             self.updateStatus()
           }
         }
+      }
+      let result: (count: Int, errors: Int)
+      if let changes, !changes.isEmpty {
+        let rootPrefix = root.path.hasSuffix("/") ? root.path : root.path + "/"
+        let valid = changes.filter { $0.path == root.path || $0.path.hasPrefix(rootPrefix) }
+        var replacements: [String: MediaEntry] = [:]
+        var errors = 0
+        for change in valid {
+          let report = Scanner.scan(
+            root: URL(fileURLWithPath: change.path), cancellation: token,
+            recursive: change.recursive
+          ) { batch in
+            for entry in batch { replacements[entry.path] = entry }
+          }
+          errors += report.errors
+        }
+        // A failed incremental read cannot safely imply deletion; retry the full root.
+        if errors > 0 {
+          result = Scanner.scan(root: root, cancellation: token, batch: collect)
+        } else {
+          fresh = previous.filter { entry in
+            !valid.contains {
+              $0.recursive
+                ? entry.path.hasPrefix($0.path.hasSuffix("/") ? $0.path : $0.path + "/")
+                : entry.folder == $0.path
+            }
+          }
+          fresh.append(contentsOf: replacements.values)
+          result = (fresh.count, 0)
+        }
+      } else {
+        result = Scanner.scan(root: root, cancellation: token, batch: collect)
       }
       guard !token.cancelled else {
         DispatchQueue.main.async {
@@ -379,6 +441,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return
       }
       let snapshot = fresh
+      let unchanged = !progressive && Scanner.sameContents(previous, snapshot)
       DispatchQueue.main.async {
         guard self.scanID == id else {
           self.scanRunning = false
@@ -386,16 +449,22 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
           return
         }
         self.scanRunning = false
-        self.all = snapshot
-        self.applyOrder(restoring: true)
+        if unchanged { self.unchangedScanCount += 1 }
+        if unchanged || (result.errors > 0 && !previous.isEmpty) {
+          self.updateStatus()
+        } else {
+          self.all = snapshot
+          self.allOrderKey = nil
+          self.applyOrder(restoring: true)
+        }
         if result.errors > 0 {
           self.status.stringValue = "\(result.count) media · \(result.errors) unreadable entries"
         }
-        if self.rescanAfter { self.startScan(progressive: false) }
+        if self.rescanAfter { self.runPendingScan() }
       }
     }
   }
-  private var currentOrderKey: String { "\(sortOrder.rawValue)|\(grouped ? 1 : 0)" }
+  private var currentOrderKey: String { "natural-v2|\(sortOrder.rawValue)|\(grouped ? 1 : 0)" }
   private func applyOrder(restoring: Bool = false, alreadySorted: Bool = false) {
     sortRunning = true
     updateStatus()
@@ -411,13 +480,21 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let filter = filter
     let orderKey = currentOrderKey
     let rootPath = root?.path
+    let canPersist = !scanRunning
+    let alreadySorted = alreadySorted || allOrderKey == orderKey
+    let width = render.bounds.width
+    let tile = render.tile
     sorter.async { [weak self] in
       guard !token.cancelled else { return }
       let ordered = alreadySorted ? snapshot : order.sorted(snapshot, grouped: grouped)
       let entries =
         filter == 0 ? ordered : ordered.filter { filter == 2 ? $0.isVideo : (!$0.isVideo) }
+      var layout = GridLayout()
+      layout.rebuild(entries: entries, width: width, tile: tile, grouped: grouped)
+      let positions = Dictionary(
+        uniqueKeysWithValues: entries.enumerated().map { ($0.element.path, $0.offset) })
       guard !token.cancelled else { return }
-      if !alreadySorted, let self, let rootPath {
+      if !alreadySorted, canPersist, let self, let rootPath {
         self.catalog.queue.async {
           guard !token.cancelled else { return }
           self.catalog.save(root: rootPath, entries: ordered, orderKey: orderKey)
@@ -425,14 +502,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       }
       DispatchQueue.main.async {
         guard let self, self.sortID == id, self.scanID == scan else { return }
+        if !alreadySorted { self.completedSortCount += 1 }
         self.sortRunning = false
+        self.all = ordered
+        self.allOrderKey = orderKey
         let selected =
           self.restorePath
           ?? ((self.selectionChanged || !self.initialOrderPending) ? self.current?.path : nil)
         self.initialOrderPending = false
-        self.render.entries = entries
-        self.render.grouped = grouped
-        self.render.selected = selected.flatMap { p in entries.firstIndex { $0.path == p } } ?? 0
+        self.render.install(entries: entries, layout: layout, grouped: grouped)
+        self.render.selected = selected.flatMap { positions[$0] } ?? 0
         self.render.rebuild()
         if restoring, self.restorePath != nil {
           self.render.offset = self.restoreOffset
@@ -451,12 +530,24 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       }
     }
   }
+  private func scheduleRefresh() {
+    guard !refreshScheduled else { return }
+    refreshScheduled = true
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.refreshScheduled = false
+      self.refreshRequests()
+    }
+  }
   private func refreshRequests() {
     guard render != nil, cache != nil else { return }
     var requests: [MediaCache.Request] = []
     if render.viewer, let current {
       if !current.isVideo {
         requests.append(.init(entry: current, limit: displayLimit, urgent: true))
+        if displayLimit > 2560 && cache.failure(current, limit: displayLimit) == .budget {
+          requests.append(.init(entry: current, limit: 2560, urgent: true))
+        }
         requests.append(.init(entry: current, limit: 512, urgent: true))
         for step in [1, 2, 3, 4, 5, 6, 7, 8, -1, -2, -3] {
           let i = render.selected + step
@@ -470,12 +561,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       }
     } else {
       let visible = render.layout.visible(offset: render.offset, height: render.bounds.height)
-      requests = visible.map { .init(entry: render.entries[$0], limit: 512, urgent: true) }
+      requests = visible.map {
+        .init(entry: render.entries[$0], limit: render.thumbnailLimit, urgent: true)
+      }
       let wanted = Set(visible)
       for i in render.layout.visible(
         offset: render.offset, height: render.bounds.height, overscan: render.bounds.height * 0.5)
       where !wanted.contains(i) {
-        requests.append(.init(entry: render.entries[i], limit: 512, urgent: false))
+        requests.append(
+          .init(entry: render.entries[i], limit: render.thumbnailLimit, urgent: false))
       }
     }
     cache.request(requests)
@@ -501,7 +595,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   }
   private func showPrepared() {
     guard render.viewer, let entry = current, !entry.isVideo else { return }
-    if let image = cache.get(entry, limit: displayLimit) ?? cache.get(entry, limit: 512) {
+    if let image = cache.get(entry, limit: displayLimit) ?? cache.get(entry, limit: 2560)
+      ?? cache.get(entry, limit: 512)
+    {
+      loadError = nil
       render.photo = image
       render.needsDisplay = true
       markFirstContent()
@@ -510,7 +607,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         playback.startAnimation(path: entry.path, limit: displayLimit, device: render.device!)
       }
     } else if cache.isFailed(entry, limit: displayLimit) {
-      loadError = "Unsupported or damaged image"
+      loadError =
+        cache.failure(entry, limit: displayLimit) == .budget
+        ? "Image exceeds the current memory budget" : "Unsupported or damaged image"
       updateStatus()
     }
   }
@@ -743,9 +842,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     refreshRequests()
   }
   @objc private func rescan() { startScan(progressive: false) }
-  private func folderChanged() {
+  private func runPendingScan() {
+    let changes = requiresFullScan ? nil : pendingChanges
+    pendingChanges.removeAll()
+    requiresFullScan = false
+    startScan(progressive: false, changes: changes)
+  }
+  private func folderChanged(_ changes: Set<FolderWatcher.Change>?) {
+    if let changes { pendingChanges.formUnion(changes) } else { requiresFullScan = true }
     pendingRescan?.cancel()
-    let task = DispatchWorkItem { [weak self] in self?.rescan() }
+    let task = DispatchWorkItem { [weak self] in self?.runPendingScan() }
     pendingRescan = task
     DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: task)
   }
@@ -769,14 +875,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   }
   private func updateStatus() {
     guard cache != nil else { return }
-    titleField.stringValue = current?.name ?? ""
+    let title = current?.name ?? ""
+    if titleField.stringValue != title { titleField.stringValue = title }
     let count = render.entries.count
     let mode = scanRunning ? "Scanning…" : (sortRunning ? "Sorting…" : "\(count.formatted()) files")
     let diagnostics = CommandLine.arguments.contains("--metrics") ? " · \(cache.stats)" : ""
-    status.stringValue =
+    let text =
       "\(loadError.map{$0+" · "} ?? "")\(mode) · \(count==0 ? 0:render.selected+1)/\(count)\(diagnostics)"
-    sound.isEnabled = true
-    pause.isEnabled = render.viewer && (current?.isVideo == true || animationPath != nil)
+    if status.stringValue != text { status.stringValue = text }
+    let canPause = render.viewer && (current?.isVideo == true || animationPath != nil)
+    if pause.isEnabled != canPause { pause.isEnabled = canPause }
   }
   private func markFirstContent() {
     guard !firstContent else { return }
@@ -800,6 +908,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       "handlerToPresentP95ms": percentile(0.95),
       "lastCPUdrawMS": render.lastDrawMilliseconds, "frames": render.renderedFrames,
       "scanRunning": scanRunning,
+      "completedSorts": completedSortCount, "unchangedScans": unchangedScanCount,
       "displayMaximumFPS": window.screen?.maximumFramesPerSecond ?? 0,
       "folderOpenToFirstPreparedMS": firstPreparedMS ?? -1,
       "folderOpenToFirstPresentedMS": render.firstMediaPresentedTime.map {
@@ -865,7 +974,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   }
   @objc private func memoryBudget(_ slider: NSSlider) {
     let value = Int(slider.doubleValue)
-    cache.photos.limit = value * 1_048_576
+    cache.setPhotoBudget(value * 1_048_576)
     UserDefaults.standard.set(value, forKey: "photoCacheMiB")
   }
   @objc private func help() {

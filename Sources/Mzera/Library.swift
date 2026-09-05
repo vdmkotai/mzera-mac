@@ -1,3 +1,4 @@
+import CoreGraphics
 import CoreServices
 import Foundation
 
@@ -6,33 +7,82 @@ struct MediaEntry: Hashable, Codable {
   let size: Int64
   let modified: Double
   let isVideo: Bool
-  var name: String { (path as NSString).lastPathComponent }
-  var folder: String { (path as NSString).deletingLastPathComponent }
+  var name: String {
+    String(
+      path.suffix(from: path.lastIndex(of: "/").map { path.index(after: $0) } ?? path.startIndex))
+  }
+  var folder: String { path.lastIndex(of: "/").map { String(path[..<$0]) } ?? "" }
   static let images: Set<String> = [
     "jpg", "jpeg", "png", "webp", "avif", "gif", "heic", "heif", "jxl", "tif", "tiff", "bmp",
-    "apng",
+    "apng", "jfif", "jpe", "jp2", "heics",
   ]
-  static let videos: Set<String> = ["webm", "mp4", "m4v", "mov", "mkv", "avi"]
+  static let videos: Set<String> = [
+    "webm", "mp4", "m4v", "mov", "mkv", "avi", "mpg", "mpeg", "3gp", "wmv", "flv", "ts", "ogv",
+  ]
+}
+
+/// Stable, locale-independent natural order. Numeric runs have no integer-size limit.
+struct NaturalKey: Comparable {
+  let bytes: [UInt8]
+  init(_ text: String) {
+    let input = Array(text.precomposedStringWithCanonicalMapping.lowercased().utf8)
+    var result: [UInt8] = []
+    result.reserveCapacity(input.count * 2)
+    var i = 0
+    while i < input.count {
+      if input[i] >= 48 && input[i] <= 57 {
+        var end = i + 1
+        while end < input.count && input[end] >= 48 && input[end] <= 57 { end += 1 }
+        var start = i
+        while start + 1 < end && input[start] == 48 { start += 1 }
+        let length = UInt32(end - start)
+        result.append(1)
+        for shift in [24, 16, 8, 0] { result.append(UInt8(truncatingIfNeeded: length >> shift)) }
+        result.append(contentsOf: input[start..<end])
+        i = end
+      } else {
+        result.append(2)
+        result.append(input[i])
+        i += 1
+      }
+    }
+    bytes = result
+  }
+  static func < (lhs: Self, rhs: Self) -> Bool { lhs.bytes.lexicographicallyPrecedes(rhs.bytes) }
 }
 
 enum SortOrder: Int, CaseIterable {
   case path, name, newest, largest
   var title: String { ["Folder / name", "Name", "Newest first", "Largest first"][rawValue] }
   func sorted(_ entries: [MediaEntry], grouped: Bool) -> [MediaEntry] {
-    entries.sorted { a, b in
-      if grouped && a.folder != b.folder {
-        return a.folder.localizedStandardCompare(b.folder) == .orderedAscending
-      }
+    var folderKeys: [(String, NaturalKey)] =
+      grouped ? Set(entries.map(\.folder)).map { ($0, NaturalKey($0)) } : []
+    folderKeys.sort {
+      $0.1 == $1.1 ? $0.0 < $1.0 : $0.1 < $1.1
+    }
+    let ranks: [String: Int] = Dictionary(
+      uniqueKeysWithValues: folderKeys.enumerated().map { ($0.element.0, $0.offset) })
+    let keys = entries.map { entry in
+      (
+        path: NaturalKey(entry.path), name: self == .name ? NaturalKey(entry.name) : NaturalKey(""),
+        folder: grouped ? ranks[entry.folder, default: 0] : 0
+      )
+    }
+    return entries.indices.sorted { ai, bi in
+      let a = entries[ai]
+      let b = entries[bi]
+      let ak = keys[ai]
+      let bk = keys[bi]
+      if ak.folder != bk.folder { return ak.folder < bk.folder }
       switch self {
       case .path: break
       case .name:
-        let c = a.name.localizedStandardCompare(b.name)
-        if c != .orderedSame { return c == .orderedAscending }
+        if ak.name != bk.name { return ak.name < bk.name }
       case .newest: if a.modified != b.modified { return a.modified > b.modified }
       case .largest: if a.size != b.size { return a.size > b.size }
       }
-      return a.path.localizedStandardCompare(b.path) == .orderedAscending
-    }
+      return ak.path == bk.path ? a.path < b.path : ak.path < bk.path
+    }.map { entries[$0] }
   }
 }
 
@@ -52,27 +102,34 @@ final class Cancellation {
 }
 
 enum Scanner {
-  static func scan(root: URL, cancellation: Cancellation, batch: ([MediaEntry]) -> Void) -> (
+  static func sameContents(_ a: [MediaEntry], _ b: [MediaEntry]) -> Bool {
+    a.count == b.count && Set(a) == Set(b)
+  }
+  static func scan(
+    root: URL, cancellation: Cancellation, recursive: Bool = true, batch: ([MediaEntry]) -> Void
+  ) -> (
     count: Int, errors: Int
   ) {
     let keys: [URLResourceKey] = [
       .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey,
     ]
+    let keySet = Set(keys)
     var errors = 0
     var count = 0
     var pending: [MediaEntry] = []
     let enumerator = FileManager.default.enumerator(
       at: root, includingPropertiesForKeys: keys,
-      options: [],
+      options: recursive ? [] : [.skipsSubdirectoryDescendants],
       errorHandler: { _, _ in
         errors += 1
         return !cancellation.cancelled
       })
     while !cancellation.cancelled, let url = enumerator?.nextObject() as? URL {
+      guard !url.lastPathComponent.hasPrefix("._") else { continue }
       let ext = url.pathExtension.lowercased()
       guard MediaEntry.images.contains(ext) || MediaEntry.videos.contains(ext) else { continue }
       do {
-        let v = try url.resourceValues(forKeys: Set(keys))
+        let v = try url.resourceValues(forKeys: keySet)
         guard v.isRegularFile == true, v.isSymbolicLink != true else { continue }
         pending.append(
           MediaEntry(
@@ -199,60 +256,119 @@ struct GridLayout {
 }
 
 final class ByteLRU<Key: Hashable, Value> {
-  private struct Item {
-    var value: Value
-    var cost: Int
-    var stamp: UInt64
+  private final class Item {
+    let key: Key
+    let value: Value
+    let cost: Int
+    weak var previous: Item?
+    var next: Item?
+    init(_ key: Key, _ value: Value, _ cost: Int) {
+      self.key = key
+      self.value = value
+      self.cost = cost
+    }
   }
   private var items: [Key: Item] = [:]
-  private var clock: UInt64 = 0
+  private var oldest: Item?
+  private var newest: Item?
   private(set) var cost = 0
   var limit: Int { didSet { trim() } }
   init(limit: Int) { self.limit = limit }
   var count: Int { items.count }
   func get(_ key: Key) -> Value? {
-    guard var item = items[key] else { return nil }
-    clock &+= 1
-    item.stamp = clock
-    items[key] = item
+    guard let item = items[key] else { return nil }
+    if item !== newest {
+      unlink(item)
+      append(item)
+    }
     return item.value
   }
+  func peek(_ key: Key) -> Value? { items[key]?.value }
+  private func unlink(_ item: Item) {
+    if let previous = item.previous { previous.next = item.next } else { oldest = item.next }
+    if let next = item.next { next.previous = item.previous } else { newest = item.previous }
+    item.previous = nil
+    item.next = nil
+  }
+  private func append(_ item: Item) {
+    item.previous = newest
+    newest?.next = item
+    if oldest == nil { oldest = item }
+    newest = item
+  }
   func put(_ key: Key, _ value: Value, cost bytes: Int) {
-    if let old = items.removeValue(forKey: key) { cost -= old.cost }
-    guard bytes <= limit else { return }
-    clock &+= 1
-    items[key] = Item(value: value, cost: bytes, stamp: clock)
+    if let old = items.removeValue(forKey: key) {
+      cost -= old.cost
+      unlink(old)
+    }
+    guard bytes >= 0 && bytes <= limit else { return }
+    let item = Item(key, value, bytes)
+    items[key] = item
+    append(item)
     cost += bytes
     trim()
   }
   func clear() {
+    // Break links iteratively: a huge cache must not recursively release a long chain.
+    while let item = oldest { unlink(item) }
     items.removeAll()
     cost = 0
   }
   private func trim() {
-    while cost > limit, let oldest = items.min(by: { $0.value.stamp < $1.value.stamp }) {
-      cost -= oldest.value.cost
-      items.removeValue(forKey: oldest.key)
+    while cost > max(0, limit), let item = oldest {
+      cost -= item.cost
+      unlink(item)
+      items.removeValue(forKey: item.key)
     }
   }
+  deinit { clear() }
 }
 
 final class FolderWatcher {
+  struct Change: Hashable {
+    let path: String
+    let recursive: Bool
+  }
   private var stream: FSEventStreamRef?
-  private let changed: () -> Void
-  init(path: String, changed: @escaping () -> Void) {
+  private let changed: (Set<Change>?) -> Void
+  init(path: String, changed: @escaping (Set<Change>?) -> Void) {
     self.changed = changed
     var context = FSEventStreamContext(
       version: 0, info: Unmanaged.passUnretained(self).toOpaque(), retain: nil, release: nil,
       copyDescription: nil)
     stream = FSEventStreamCreate(
       nil,
-      { _, info, _, _, _, _ in
+      { _, info, count, rawPaths, flags, _ in
         guard let info else { return }
-        Unmanaged<FolderWatcher>.fromOpaque(info).takeUnretainedValue().changed()
+        let owner = Unmanaged<FolderWatcher>.fromOpaque(info).takeUnretainedValue()
+        let paths = unsafeBitCast(rawPaths, to: CFArray.self) as! [String]
+        var changes = Set<Change>()
+        let full = FSEventStreamEventFlags(
+          kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagUserDropped
+            | kFSEventStreamEventFlagKernelDropped | kFSEventStreamEventFlagRootChanged
+            | kFSEventStreamEventFlagEventIdsWrapped)
+        for i in 0..<count {
+          if flags[i] & full != 0 {
+            owner.changed(nil)
+            return
+          }
+          let directory = flags[i] & FSEventStreamEventFlags(kFSEventStreamEventFlagItemIsDir) != 0
+          let structural =
+            flags[i]
+            & FSEventStreamEventFlags(
+              kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved
+                | kFSEventStreamEventFlagItemRenamed) != 0
+          let url = URL(fileURLWithPath: paths[i]).standardizedFileURL
+          changes.insert(
+            Change(
+              path: directory ? url.path : url.deletingLastPathComponent().path,
+              recursive: directory && structural))
+        }
+        if !changes.isEmpty { owner.changed(changes) }
       }, &context, [path] as CFArray, FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 1.5,
       FSEventStreamCreateFlags(
-        kFSEventStreamCreateFlagWatchRoot | kFSEventStreamCreateFlagFileEvents))
+        kFSEventStreamCreateFlagWatchRoot | kFSEventStreamCreateFlagFileEvents
+          | kFSEventStreamCreateFlagUseCFTypes))
     if let stream {
       FSEventStreamSetDispatchQueue(stream, .main)
       FSEventStreamStart(stream)

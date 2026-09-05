@@ -6,143 +6,287 @@ final class Catalog {
   let queue = DispatchQueue(label: "mzera.catalog", qos: .utility)
   private var db: OpaquePointer?
   private let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+  private(set) var lastError: String?
+  private(set) var saveCount = 0
+  private(set) var lastSaveChangedRows = 0
+  private var pendingCache: [String: (bytes: Int?, time: Double)] = [:]
+  private var pendingFlush: DispatchWorkItem?
+  private var cacheBytes: Int64 = 0
+
+  private struct Failure: Error { let message: String }
   init(base: URL? = nil) {
     self.base =
       base
       ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
       .appendingPathComponent("local.mzera.mac")
-    try? FileManager.default.createDirectory(at: self.base, withIntermediateDirectories: true)
-    sqlite3_open_v2(
-      self.base.appendingPathComponent("catalog.sqlite").path, &db,
-      SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil)
-    sqlite3_busy_timeout(db, 3000)
-    sqlite3_exec(
-      db,
-      "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; CREATE TABLE IF NOT EXISTS media(root TEXT,path TEXT,size INTEGER,modified REAL,video INTEGER,PRIMARY KEY(root,path)); CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY); CREATE TABLE IF NOT EXISTS cache(key TEXT PRIMARY KEY,bytes INTEGER,touched REAL);",
-      nil, nil, nil)
-    // Existing catalogs predate the persisted presentation order. Duplicate-column
-    // errors are harmless: an empty order key forces one fresh sort after migration.
-    sqlite3_exec(
-      db, "ALTER TABLE media ADD COLUMN position INTEGER NOT NULL DEFAULT 0", nil, nil, nil)
-    sqlite3_exec(
-      db, "ALTER TABLE roots ADD COLUMN order_key TEXT NOT NULL DEFAULT ''", nil, nil, nil)
-    sqlite3_exec(
-      db, "CREATE INDEX IF NOT EXISTS media_order ON media(root,position)", nil, nil, nil)
-  }
-  deinit { sqlite3_close(db) }
-  private func bind(_ statement: OpaquePointer?, _ index: Int32, _ text: String) {
-    sqlite3_bind_text(statement, index, text, -1, transient)
-  }
-  // Access on queue. Snapshot reads and replacements never run on the UI thread.
-  func load(root: String) -> [MediaEntry]? {
-    var check: OpaquePointer?
-    sqlite3_prepare_v2(db, "SELECT 1 FROM roots WHERE path=?", -1, &check, nil)
-    bind(check, 1, root)
-    let exists = sqlite3_step(check) == SQLITE_ROW
-    sqlite3_finalize(check)
-    guard exists else { return nil }
-    var statement: OpaquePointer?
-    sqlite3_prepare_v2(
-      db, "SELECT path,size,modified,video FROM media WHERE root=? ORDER BY position", -1,
-      &statement, nil)
-    bind(statement, 1, root)
-    defer { sqlite3_finalize(statement) }
-    var result: [MediaEntry] = []
-    while sqlite3_step(statement) == SQLITE_ROW {
-      guard let p = sqlite3_column_text(statement, 0) else { continue }
-      result.append(
-        MediaEntry(
-          path: String(cString: p), size: sqlite3_column_int64(statement, 1),
-          modified: sqlite3_column_double(statement, 2),
-          isVideo: sqlite3_column_int(statement, 3) != 0))
+    do {
+      try FileManager.default.createDirectory(at: self.base, withIntermediateDirectories: true)
+      try check(
+        sqlite3_open_v2(
+          self.base.appendingPathComponent("catalog.sqlite").path, &db,
+          SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil))
+      try check(sqlite3_busy_timeout(db, 3000))
+      try execute(
+        "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; CREATE TABLE IF NOT EXISTS media(root TEXT,path TEXT,size INTEGER,modified REAL,video INTEGER,PRIMARY KEY(root,path)); CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY); CREATE TABLE IF NOT EXISTS cache(key TEXT PRIMARY KEY,bytes INTEGER,touched REAL);"
+      )
+      if try !columns("media").contains("position") {
+        try execute("ALTER TABLE media ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
+      }
+      if try !columns("roots").contains("order_key") {
+        try execute("ALTER TABLE roots ADD COLUMN order_key TEXT NOT NULL DEFAULT ''")
+      }
+      try execute(
+        "CREATE INDEX IF NOT EXISTS media_order ON media(root,position); CREATE INDEX IF NOT EXISTS cache_age ON cache(touched)"
+      )
+      cacheBytes = try statement("SELECT COALESCE(SUM(bytes),0) FROM cache") { s in
+        _ = try step(s)
+        return sqlite3_column_int64(s, 0)
+      }
+    } catch {
+      report(error)
+      sqlite3_close(db)
+      db = nil  // Originals remain viewable without a working cache database.
     }
-    return result
+  }
+  deinit {
+    pendingFlush?.cancel()
+    sqlite3_close(db)
+  }
+  private func check(_ code: Int32) throws {
+    guard code == SQLITE_OK else {
+      throw Failure(message: db.map { String(cString: sqlite3_errmsg($0)) } ?? "SQLite unavailable")
+    }
+  }
+  private func report(_ error: Error) {
+    lastError = (error as? Failure)?.message ?? error.localizedDescription
+    NSLog("Mzera catalog: %@", lastError!)
+  }
+  private func execute(_ sql: String) throws {
+    guard db != nil else { throw Failure(message: "Catalog unavailable") }
+    try check(sqlite3_exec(db, sql, nil, nil, nil))
+  }
+  private func statement<T>(_ sql: String, _ body: (OpaquePointer) throws -> T) throws -> T {
+    guard db != nil else { throw Failure(message: "Catalog unavailable") }
+    var s: OpaquePointer?
+    try check(sqlite3_prepare_v2(db, sql, -1, &s, nil))
+    guard let s else { throw Failure(message: "Empty SQLite statement") }
+    defer { sqlite3_finalize(s) }
+    return try body(s)
+  }
+  private func bind(_ s: OpaquePointer, _ index: Int32, _ text: String) throws {
+    try check(sqlite3_bind_text(s, index, text, -1, transient))
+  }
+  private func step(_ s: OpaquePointer) throws -> Bool {
+    let result = sqlite3_step(s)
+    if result == SQLITE_ROW { return true }
+    if result == SQLITE_DONE { return false }
+    try check(result)
+    return false
+  }
+  private func columns(_ table: String) throws -> Set<String> {
+    try statement("PRAGMA table_info(\(table))") { s in
+      var result = Set<String>()
+      while try step(s) {
+        if let value = sqlite3_column_text(s, 1) { result.insert(String(cString: value)) }
+      }
+      return result
+    }
+  }
+  private func read(root: String) throws -> [MediaEntry]? {
+    let exists = try statement("SELECT 1 FROM roots WHERE path=?") { s in
+      try bind(s, 1, root)
+      return try step(s)
+    }
+    guard exists else { return nil }
+    return try statement(
+      "SELECT path,size,modified,video FROM media WHERE root=? ORDER BY position"
+    ) { s in
+      try bind(s, 1, root)
+      var result: [MediaEntry] = []
+      while try step(s) {
+        guard let p = sqlite3_column_text(s, 0) else { throw Failure(message: "NULL media path") }
+        result.append(
+          MediaEntry(
+            path: String(cString: p), size: sqlite3_column_int64(s, 1),
+            modified: sqlite3_column_double(s, 2), isVideo: sqlite3_column_int(s, 3) != 0))
+      }
+      return result
+    }
+  }
+  // All methods except the explicitly queued cache operations are called on queue.
+  func load(root: String) -> [MediaEntry]? {
+    do { return try read(root: root) } catch {
+      report(error)
+      return nil
+    }
   }
   func orderKey(root: String) -> String? {
-    var statement: OpaquePointer?
-    sqlite3_prepare_v2(db, "SELECT order_key FROM roots WHERE path=?", -1, &statement, nil)
-    bind(statement, 1, root)
-    defer { sqlite3_finalize(statement) }
-    guard sqlite3_step(statement) == SQLITE_ROW, let value = sqlite3_column_text(statement, 0)
-    else { return nil }
-    return String(cString: value)
-  }
-  func save(root: String, entries: [MediaEntry], orderKey: String = "") {
-    sqlite3_exec(db, "BEGIN IMMEDIATE", nil, nil, nil)
-    var stmt: OpaquePointer?
-    sqlite3_prepare_v2(db, "DELETE FROM media WHERE root=?", -1, &stmt, nil)
-    bind(stmt, 1, root)
-    sqlite3_step(stmt)
-    sqlite3_finalize(stmt)
-    sqlite3_prepare_v2(
-      db, "INSERT INTO media(root,path,size,modified,video,position) VALUES(?,?,?,?,?,?)", -1,
-      &stmt, nil)
-    for (position, e) in entries.enumerated() {
-      sqlite3_reset(stmt)
-      bind(stmt, 1, root)
-      bind(stmt, 2, e.path)
-      sqlite3_bind_int64(stmt, 3, e.size)
-      sqlite3_bind_double(stmt, 4, e.modified)
-      sqlite3_bind_int(stmt, 5, e.isVideo ? 1 : 0)
-      sqlite3_bind_int64(stmt, 6, Int64(position))
-      sqlite3_step(stmt)
-    }
-    sqlite3_finalize(stmt)
-    sqlite3_prepare_v2(
-      db, "INSERT OR REPLACE INTO roots(path,order_key) VALUES(?,?)", -1, &stmt, nil)
-    bind(stmt, 1, root)
-    bind(stmt, 2, orderKey)
-    sqlite3_step(stmt)
-    sqlite3_finalize(stmt)
-    sqlite3_exec(db, "COMMIT", nil, nil, nil)
-  }
-  func noteCache(key: String, bytes: Int) {
-    queue.async {
-      var stmt: OpaquePointer?
-      sqlite3_prepare_v2(self.db, "INSERT OR REPLACE INTO cache VALUES(?,?,?)", -1, &stmt, nil)
-      self.bind(stmt, 1, key)
-      sqlite3_bind_int64(stmt, 2, Int64(bytes))
-      sqlite3_bind_double(stmt, 3, Date.timeIntervalSinceReferenceDate)
-      sqlite3_step(stmt)
-      sqlite3_finalize(stmt)
+    do {
+      return try statement("SELECT order_key FROM roots WHERE path=?") { s in
+        try bind(s, 1, root)
+        guard try step(s), let value = sqlite3_column_text(s, 0) else { return nil }
+        return String(cString: value)
+      }
+    } catch {
+      report(error)
+      return nil
     }
   }
-  func touchCache(key: String) {
-    queue.async {
-      var stmt: OpaquePointer?
-      sqlite3_prepare_v2(self.db, "UPDATE cache SET touched=? WHERE key=?", -1, &stmt, nil)
-      sqlite3_bind_double(stmt, 1, Date.timeIntervalSinceReferenceDate)
-      self.bind(stmt, 2, key)
-      sqlite3_step(stmt)
-      sqlite3_finalize(stmt)
+  @discardableResult
+  func save(root: String, entries: [MediaEntry], orderKey: String = "") -> Bool {
+    do {
+      try execute("BEGIN IMMEDIATE")
+      do {
+        let previous = try read(root: root) ?? []
+        let old = Dictionary(
+          uniqueKeysWithValues: previous.enumerated().map {
+            ($0.element.path, ($0.offset, $0.element))
+          })
+        let paths = Set(entries.map(\.path))
+        guard paths.count == entries.count else { throw Failure(message: "Duplicate media path") }
+        var changed = 0
+        try statement("DELETE FROM media WHERE root=? AND path=?") { s in
+          for e in previous where !paths.contains(e.path) {
+            try check(sqlite3_reset(s))
+            try bind(s, 1, root)
+            try bind(s, 2, e.path)
+            _ = try step(s)
+            changed += 1
+          }
+        }
+        try statement(
+          "INSERT INTO media(root,path,size,modified,video,position) VALUES(?,?,?,?,?,?) ON CONFLICT(root,path) DO UPDATE SET size=excluded.size,modified=excluded.modified,video=excluded.video,position=excluded.position"
+        ) { s in
+          for (position, e) in entries.enumerated() {
+            if let prior = old[e.path], prior.0 == position && prior.1 == e { continue }
+            try check(sqlite3_reset(s))
+            try bind(s, 1, root)
+            try bind(s, 2, e.path)
+            try check(sqlite3_bind_int64(s, 3, e.size))
+            try check(sqlite3_bind_double(s, 4, e.modified))
+            try check(sqlite3_bind_int(s, 5, e.isVideo ? 1 : 0))
+            try check(sqlite3_bind_int64(s, 6, Int64(position)))
+            _ = try step(s)
+            changed += 1
+          }
+        }
+        try statement(
+          "INSERT INTO roots(path,order_key) VALUES(?,?) ON CONFLICT(path) DO UPDATE SET order_key=excluded.order_key WHERE roots.order_key!=excluded.order_key"
+        ) { s in
+          try bind(s, 1, root)
+          try bind(s, 2, orderKey)
+          _ = try step(s)
+        }
+        try execute("COMMIT")
+        saveCount += 1
+        lastSaveChangedRows = changed
+        lastError = nil
+        return true
+      } catch {
+        try? execute("ROLLBACK")
+        throw error
+      }
+    } catch {
+      report(error)
+      return false
     }
+  }
+  func noteCache(key: String, bytes: Int) { enqueueCache(key: key, bytes: max(0, bytes)) }
+  func touchCache(key: String) { enqueueCache(key: key, bytes: nil) }
+  private func enqueueCache(key: String, bytes: Int?) {
+    queue.async { [self] in
+      guard db != nil else { return }
+      pendingCache[key] = (bytes ?? pendingCache[key]?.bytes, Date.timeIntervalSinceReferenceDate)
+      if pendingCache.count >= 128 {
+        flushCache()
+        return
+      }
+      guard pendingFlush == nil else { return }
+      let job = DispatchWorkItem { [weak self] in self?.flushCache() }
+      pendingFlush = job
+      queue.asyncAfter(deadline: .now() + 2, execute: job)
+    }
+  }
+  func flushCache() {
+    pendingFlush?.cancel()
+    pendingFlush = nil
+    guard !pendingCache.isEmpty else { return }
+    let pending = pendingCache
+    pendingCache.removeAll(keepingCapacity: true)
+    do {
+      try execute("BEGIN IMMEDIATE")
+      var delta: Int64 = 0
+      do {
+        for (key, value) in pending {
+          if let bytes = value.bytes {
+            let old: Int64 = try statement("SELECT bytes FROM cache WHERE key=?") { s in
+              try bind(s, 1, key)
+              return try step(s) ? sqlite3_column_int64(s, 0) : 0
+            }
+            try statement("INSERT OR REPLACE INTO cache VALUES(?,?,?)") { s in
+              try bind(s, 1, key)
+              try check(sqlite3_bind_int64(s, 2, Int64(bytes)))
+              try check(sqlite3_bind_double(s, 3, value.time))
+              _ = try step(s)
+            }
+            delta += Int64(bytes) - old
+          } else {
+            try statement("UPDATE cache SET touched=? WHERE key=?") { s in
+              try check(sqlite3_bind_double(s, 1, value.time))
+              try bind(s, 2, key)
+              _ = try step(s)
+            }
+          }
+        }
+        try execute("COMMIT")
+        cacheBytes += delta
+      } catch {
+        try? execute("ROLLBACK")
+        throw error
+      }
+    } catch { report(error) }
   }
   func trimCache(limit: Int64) {
-    queue.async {
-      var stmt: OpaquePointer?
-      sqlite3_prepare_v2(self.db, "SELECT COALESCE(SUM(bytes),0) FROM cache", -1, &stmt, nil)
-      sqlite3_step(stmt)
-      var total = sqlite3_column_int64(stmt, 0)
-      sqlite3_finalize(stmt)
-      guard total > limit else { return }
-      sqlite3_prepare_v2(
-        self.db, "SELECT key,bytes FROM cache ORDER BY touched ASC", -1, &stmt, nil)
-      var victims: [String] = []
-      while total > limit * 9 / 10 && sqlite3_step(stmt) == SQLITE_ROW {
-        let key = String(cString: sqlite3_column_text(stmt, 0))
-        total -= sqlite3_column_int64(stmt, 1)
-        victims.append(key)
-      }
-      sqlite3_finalize(stmt)
-      sqlite3_prepare_v2(self.db, "DELETE FROM cache WHERE key=?", -1, &stmt, nil)
-      for key in victims {
-        try? FileManager.default.removeItem(
-          at: self.base.appendingPathComponent("thumbs").appendingPathComponent(key))
-        sqlite3_reset(stmt)
-        self.bind(stmt, 1, key)
-        sqlite3_step(stmt)
-      }
-      sqlite3_finalize(stmt)
+    queue.async { [self] in
+      flushCache()
+      guard cacheBytes > limit else { return }
+      do {
+        var total = cacheBytes
+        let victims: [(String, Int64)] = try statement(
+          "SELECT key,bytes FROM cache ORDER BY touched"
+        ) { s in
+          var values: [(String, Int64)] = []
+          while total > limit * 9 / 10, try step(s) {
+            guard let raw = sqlite3_column_text(s, 0) else { continue }
+            let key = String(cString: raw)
+            let bytes = sqlite3_column_int64(s, 1)
+            // A corrupt database must never turn a cache key into an arbitrary file path.
+            guard !key.contains("/"), !key.contains("..") else { continue }
+            total -= bytes
+            values.append((key, bytes))
+          }
+          return values
+        }
+        try execute("BEGIN IMMEDIATE")
+        do {
+          try statement("DELETE FROM cache WHERE key=?") { s in
+            for (key, _) in victims {
+              try check(sqlite3_reset(s))
+              try bind(s, 1, key)
+              _ = try step(s)
+            }
+          }
+          try execute("COMMIT")
+          cacheBytes = total
+          for (key, _) in victims {
+            try? FileManager.default.removeItem(
+              at: base.appendingPathComponent("thumbs").appendingPathComponent(key))
+          }
+        } catch {
+          try? execute("ROLLBACK")
+          throw error
+        }
+      } catch { report(error) }
     }
   }
 }

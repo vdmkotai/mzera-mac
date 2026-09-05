@@ -1,0 +1,11 @@
+Test Case '-[MzeraTests.CoreTests testZoomKeepsPointUnderCursorAndPanWithinImage]' passed (0.000 seconds).
+Test Suite 'CoreTests' passed at 2026-09-05 04:23:44.892.
+	 Executed 36 tests, with 0 failures (0 unexpected) in 1.743 (1.745) seconds
+Test Suite 'MzeraMacPackageTests.xctest' passed at 2026-09-05 04:23:44.892.
+	 Executed 36 tests, with 0 failures (0 unexpected) in 1.743 (1.745) seconds
+Test Suite 'All tests' passed at 2026-09-05 04:23:44.892.
+	 Executed 36 tests, with 0 failures (0 unexpected) in 1.743 (1.750) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

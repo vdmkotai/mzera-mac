@@ -8,6 +8,8 @@ struct VideoSurface {
   let references: [CVMetalTexture]
   let fullRange: Bool
   let bt601: Bool
+  let bt2020: Bool
+  let tenBit: Bool
   var width: Int { CVPixelBufferGetWidth(pixel) }
   var height: Int { CVPixelBufferGetHeight(pixel) }
 }
@@ -24,6 +26,11 @@ final class RenderView: MTKView, MTKViewDelegate {
   private let white: MTLTexture
   private var textureCache: CVMetalTextureCache?
   private var labels: [NSTextField] = []
+  private var headerTitles: [String: String] = [:]
+  private var vertexBuffers: [MTLBuffer?] = [nil, nil, nil]
+  private let frameSlots = DispatchSemaphore(value: 3)
+  private var frameSlot = 0
+  private var pendingDraw = false
   private var sectionsDirty = true
   var entries: [MediaEntry] = [] { didSet { sectionsDirty = true } }
   var layout = GridLayout()
@@ -31,14 +38,17 @@ final class RenderView: MTKView, MTKViewDelegate {
   var tile: Double = 160
   var offset: Double = 0
   var selected: Int = 0
-  var viewer = false
+  var viewer = false {
+    didSet { if viewer && !oldValue { labels.forEach { $0.isHidden = true } } }
+  }
   var showHeaders = true
   var photo: PreparedImage?
   var video: VideoSurface?
   var zoom: Double? = nil
   var pan = CGPoint.zero
   var cache: MediaCache?
-  var root = ""
+  var root = "" { didSet { headerTitles.removeAll() } }
+  var thumbnailLimit: Int { tile * (window?.backingScaleFactor ?? 2) <= 256 ? 256 : 512 }
   var onViewport: (() -> Void)?
   var onOpen: ((Int) -> Void)?
   var onSelect: ((Int) -> Void)?
@@ -51,7 +61,6 @@ final class RenderView: MTKView, MTKViewDelegate {
   var firstMediaPresentedTime: Double?
   func markPreparedInput(_ ready: Bool) { pendingInput = ready ? CACurrentMediaTime() : nil }
   func interact() {
-    preferredFramesPerSecond = window?.screen?.maximumFramesPerSecond ?? 60
     needsDisplay = true
   }
   override var acceptsFirstResponder: Bool { true }
@@ -63,7 +72,11 @@ final class RenderView: MTKView, MTKViewDelegate {
     if let url = Bundle.main.url(forResource: "Shaders", withExtension: "metallib") {
       library = try device.makeLibrary(URL: url)
     } else {
-      let url = Bundle.module.url(forResource: "Shaders", withExtension: "metal")!
+      guard let url = Bundle.module.url(forResource: "Shaders", withExtension: "metal") else {
+        throw NSError(
+          domain: "Mzera", code: 1,
+          userInfo: [NSLocalizedDescriptionKey: "Missing Metal shader resource"])
+      }
       library = try device.makeLibrary(
         source: String(contentsOf: url, encoding: .utf8), options: nil)
     }
@@ -99,6 +112,13 @@ final class RenderView: MTKView, MTKViewDelegate {
     CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
   }
   required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+  func install(entries: [MediaEntry], layout: GridLayout, grouped: Bool) {
+    self.entries = entries
+    self.grouped = grouped
+    self.layout = layout
+    sectionsDirty = false
+    headerTitles.removeAll(keepingCapacity: true)
+  }
   func rebuild() {
     if sectionsDirty {
       layout.rebuild(entries: entries, width: bounds.width, tile: tile, grouped: grouped)
@@ -107,6 +127,7 @@ final class RenderView: MTKView, MTKViewDelegate {
       layout.reflow(width: bounds.width, tile: tile)
     }
     offset = min(max(0, offset), max(0, layout.height - bounds.height))
+    if viewer { constrainPan() }
     needsDisplay = true
     onViewport?()
   }
@@ -117,71 +138,103 @@ final class RenderView: MTKView, MTKViewDelegate {
     pan = .zero
     needsDisplay = true
   }
-  func showPixel(_ pixel: CVPixelBuffer, fullRange: Bool, bt601: Bool) {
-    guard let textureCache else { return }
+  @discardableResult
+  func showPixel(_ pixel: CVPixelBuffer, fullRange: Bool, bt601: Bool, bt2020: Bool = false) -> Bool
+  {
+    guard let textureCache else { return false }
     let planes = CVPixelBufferGetPlaneCount(pixel)
     var y: CVMetalTexture?
     var uv: CVMetalTexture?
+    let format = CVPixelBufferGetPixelFormatType(pixel)
+    let tenBit =
+      format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange
+      || format == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange
     if planes == 2 {
-      let format = CVPixelBufferGetPixelFormatType(pixel)
       guard
         format == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
-          || format == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
-      else { return }
+          || format == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange || tenBit
+      else { return false }
       CVMetalTextureCacheCreateTextureFromImage(
-        nil, textureCache, pixel, nil, .r8Unorm, CVPixelBufferGetWidthOfPlane(pixel, 0),
+        nil, textureCache, pixel, nil, tenBit ? .r16Unorm : .r8Unorm,
+        CVPixelBufferGetWidthOfPlane(pixel, 0),
         CVPixelBufferGetHeightOfPlane(pixel, 0), 0, &y)
       CVMetalTextureCacheCreateTextureFromImage(
-        nil, textureCache, pixel, nil, .rg8Unorm, CVPixelBufferGetWidthOfPlane(pixel, 1),
+        nil, textureCache, pixel, nil, tenBit ? .rg16Unorm : .rg8Unorm,
+        CVPixelBufferGetWidthOfPlane(pixel, 1),
         CVPixelBufferGetHeightOfPlane(pixel, 1), 1, &uv)
     } else {
       CVMetalTextureCacheCreateTextureFromImage(
         nil, textureCache, pixel, nil, .bgra8Unorm, CVPixelBufferGetWidth(pixel),
         CVPixelBufferGetHeight(pixel), 0, &y)
     }
-    guard let y, let texture = CVMetalTextureGetTexture(y) else { return }
+    guard let y, let texture = CVMetalTextureGetTexture(y), planes != 2 || uv != nil else {
+      return false
+    }
     video = VideoSurface(
       pixel: pixel, y: texture, uv: uv.flatMap(CVMetalTextureGetTexture),
-      references: [y] + (uv.map { [$0] } ?? []), fullRange: fullRange, bt601: bt601)
+      references: [y] + (uv.map { [$0] } ?? []), fullRange: fullRange, bt601: bt601, bt2020: bt2020,
+      tenBit: tenBit)
     needsDisplay = true
+    return true
   }
   func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { rebuild() }
   func draw(in view: MTKView) {
     let start = ProcessInfo.processInfo.systemUptime
+    guard frameSlots.wait(timeout: .now()) == .success else {
+      pendingDraw = true
+      return
+    }
+    var submitted = false
+    defer { if !submitted { frameSlots.signal() } }
+    let visible = viewer ? [] : layout.visible(offset: offset, height: bounds.height)
+    let bytes = max(1024, (visible.count * 8 + 4) * 6) * MemoryLayout<Vertex>.stride
+    let slot = frameSlot
+    if (vertexBuffers[slot]?.length ?? 0) < bytes {
+      vertexBuffers[slot] = device?.makeBuffer(length: bytes, options: .storageModeShared)
+    }
+    guard let vertices = vertexBuffers[slot] else { return }
+    var vertexCount = 0
+    let vertexPointer = vertices.contents().bindMemory(
+      to: Vertex.self, capacity: bytes / MemoryLayout<Vertex>.stride)
     guard bounds.width > 0, bounds.height > 0, let pass = currentRenderPassDescriptor,
       let drawable = currentDrawable,
       let buffer = commands.makeCommandBuffer(),
       let encoder = buffer.makeRenderCommandEncoder(descriptor: pass)
     else { return }
     encoder.setRenderPipelineState(pipeline)
+    encoder.setVertexBuffer(vertices, offset: 0, index: 0)
     var drewMedia = false
     func quad(_ rect: CGRect, _ texture: MTLTexture, _ color: SIMD4<Float> = SIMD4(repeating: 1)) {
       let l = Float(rect.minX / bounds.width * 2 - 1)
       let r = Float(rect.maxX / bounds.width * 2 - 1)
       let t = Float(1 - rect.minY / bounds.height * 2)
       let b = Float(1 - rect.maxY / bounds.height * 2)
-      var vertices = [
+      let quadVertices = (
         Vertex(pos: [l, t], uv: [0, 0], color: color),
         Vertex(pos: [l, b], uv: [0, 1], color: color),
         Vertex(pos: [r, t], uv: [1, 0], color: color),
         Vertex(pos: [r, t], uv: [1, 0], color: color),
         Vertex(pos: [l, b], uv: [0, 1], color: color),
-        Vertex(pos: [r, b], uv: [1, 1], color: color),
-      ]
-      encoder.setVertexBytes(
-        &vertices, length: MemoryLayout<Vertex>.stride * vertices.count, index: 0)
+        Vertex(pos: [r, b], uv: [1, 1], color: color)
+      )
+      withUnsafeBytes(of: quadVertices) { source in
+        UnsafeMutableRawPointer(vertexPointer.advanced(by: vertexCount)).copyMemory(
+          from: source.baseAddress!, byteCount: source.count)
+      }
       encoder.setFragmentTexture(texture, index: 0)
-      encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
+      encoder.drawPrimitives(type: .triangle, vertexStart: vertexCount, vertexCount: 6)
+      vertexCount += 6
     }
     if viewer {
-      labels.forEach { $0.isHidden = true }
       if let video {
         drewMedia = true
         if let uv = video.uv {
           encoder.setRenderPipelineState(videoPipeline)
           encoder.setFragmentTexture(uv, index: 1)
-          var flags = SIMD2<Float>(video.fullRange ? 1 : 0, video.bt601 ? 1 : 0)
-          encoder.setFragmentBytes(&flags, length: MemoryLayout<SIMD2<Float>>.stride, index: 0)
+          var flags = SIMD4<Float>(
+            video.fullRange ? 1 : 0, video.bt2020 ? 2 : (video.bt601 ? 1 : 0), video.tenBit ? 1 : 0,
+            0)
+          encoder.setFragmentBytes(&flags, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
         }
         quad(fitted(width: video.width, height: video.height), video.y)
         // Keep the CVPixelBuffer and CVMetalTexture wrappers alive through GPU completion.
@@ -191,19 +244,18 @@ final class RenderView: MTKView, MTKViewDelegate {
         quad(fitted(width: photo.width, height: photo.height), photo.texture)
       }
     } else {
-      let visible = layout.visible(offset: offset, height: bounds.height)
       for index in visible {
         let entry = entries[index]
         let rect = layout.rect(at: index).offsetBy(dx: 0, dy: -offset)
         quad(rect, white, SIMD4(0.11, 0.12, 0.14, 1))
-        if let thumb = cache?.get(entry, limit: 512) {
+        if let thumb = cache?.peek(entry, limit: thumbnailLimit) ?? cache?.peek(entry, limit: 512) {
           drewMedia = true
           let scale = min(rect.width / Double(thumb.width), rect.height / Double(thumb.height))
           let w = Double(thumb.width) * scale
           let h = Double(thumb.height) * scale
           quad(
             CGRect(x: rect.midX - w / 2, y: rect.midY - h / 2, width: w, height: h), thumb.texture)
-        } else if cache?.isFailed(entry, limit: 512) == true {
+        } else if cache?.isFailed(entry, limit: thumbnailLimit) == true {
           quad(
             CGRect(x: rect.midX - 7, y: rect.midY - 1, width: 14, height: 2), white,
             SIMD4(0.8, 0.35, 0.35, 1))
@@ -246,8 +298,20 @@ final class RenderView: MTKView, MTKViewDelegate {
       }
     }
     encoder.endEncoding()
+    let slots = frameSlots
+    buffer.addCompletedHandler { [weak self] _ in
+      slots.signal()
+      DispatchQueue.main.async {
+        if self?.pendingDraw == true {
+          self?.pendingDraw = false
+          self?.needsDisplay = true
+        }
+      }
+    }
     buffer.present(drawable)
     buffer.commit()
+    submitted = true
+    frameSlot = (frameSlot + 1) % vertexBuffers.count
     renderedFrames += 1
     lastDrawMilliseconds = (ProcessInfo.processInfo.systemUptime - start) * 1000
   }
@@ -267,9 +331,11 @@ final class RenderView: MTKView, MTKViewDelegate {
         let s = layout.sections[i]
         let y = max(s.y - offset, min(0, s.bottom - offset - layout.header))
         let title =
-          s.title.hasPrefix(root)
-          ? String(s.title.dropFirst(root.count)).trimmingCharacters(
-            in: CharacterSet(charactersIn: "/")) : s.title
+          headerTitles[s.title]
+          ?? (s.title.hasPrefix(root)
+            ? String(s.title.dropFirst(root.count)).trimmingCharacters(
+              in: CharacterSet(charactersIn: "/")) : s.title)
+        headerTitles[s.title] = title
         needed.append((title.isEmpty ? (root as NSString).lastPathComponent : title, y))
         i += 1
       }
@@ -285,10 +351,12 @@ final class RenderView: MTKView, MTKViewDelegate {
       labels.append(field)
     }
     for (i, label) in labels.enumerated() {
-      label.isHidden = i >= needed.count
+      let hidden = i >= needed.count
+      if label.isHidden != hidden { label.isHidden = hidden }
       if i < needed.count {
-        label.stringValue = needed[i].0
-        label.frame = CGRect(x: 8, y: needed[i].1, width: bounds.width - 16, height: 26)
+        if label.stringValue != needed[i].0 { label.stringValue = needed[i].0 }
+        let frame = CGRect(x: 8, y: needed[i].1, width: bounds.width - 16, height: 26)
+        if label.frame != frame { label.frame = frame }
       }
     }
   }
@@ -302,10 +370,13 @@ final class RenderView: MTKView, MTKViewDelegate {
   override func scrollWheel(with event: NSEvent) {
     if viewer {
       if event.modifierFlags.contains(.command) {
-        magnify(by: Double(event.scrollingDeltaY) * 0.015)
+        magnify(
+          by: Double(event.scrollingDeltaY) * 0.015,
+          anchor: convert(event.locationInWindow, from: nil))
       } else if zoom != nil {
         pan.x += event.scrollingDeltaX
         pan.y += event.scrollingDeltaY
+        constrainPan()
         needsDisplay = true
       }
       return
@@ -340,18 +411,38 @@ final class RenderView: MTKView, MTKViewDelegate {
     let point = convert(event.locationInWindow, from: nil)
     pan.x += point.x - dragPoint.x
     pan.y += point.y - dragPoint.y
+    constrainPan()
     dragPoint = point
     needsDisplay = true
   }
-  override func magnify(with event: NSEvent) { if viewer { magnify(by: event.magnification) } }
-  func magnify(by amount: Double) {
+  override func magnify(with event: NSEvent) {
+    if viewer {
+      magnify(by: event.magnification, anchor: convert(event.locationInWindow, from: nil))
+    }
+  }
+  func magnify(by amount: Double, anchor: CGPoint? = nil) {
     let w = video?.width ?? photo?.width ?? 1
     let h = video?.height ?? photo?.height ?? 1
-    zoom = min(
+    let oldScale = zoom ?? min(bounds.width / Double(w), bounds.height / Double(h))
+    let nextScale = min(
       8,
-      max(0.03, (zoom ?? min(bounds.width / Double(w), bounds.height / Double(h))) * (1 + amount)))
+      max(0.03, oldScale * (1 + amount)))
+    let anchor = anchor ?? CGPoint(x: bounds.midX, y: bounds.midY)
+    pan = ViewGeometry.zoomedPan(
+      pan, anchor: anchor, viewport: bounds.size, oldScale: oldScale, newScale: nextScale)
+    zoom = nextScale
+    constrainPan()
     needsDisplay = true
     onViewport?()
+  }
+  private func constrainPan() {
+    guard let zoom else {
+      pan = .zero
+      return
+    }
+    let size = CGSize(
+      width: video?.width ?? photo?.width ?? 1, height: video?.height ?? photo?.height ?? 1)
+    pan = ViewGeometry.clampedPan(pan, image: size, viewport: bounds.size, scale: zoom)
   }
   override func keyDown(with event: NSEvent) {
     if onKey?(event) != true { super.keyDown(with: event) }

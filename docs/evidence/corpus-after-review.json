@@ -1,0 +1,37 @@
+{
+  "entries" : 104831,
+  "errors" : 0,
+  "scanSeconds" : 1.6471593333408237,
+  "singleFileTextureProbes" : [
+    {
+      "bytes" : 589824,
+      "format" : "jpg",
+      "milliseconds" : 12.047124997479841,
+      "prepared" : true
+    },
+    {
+      "bytes" : 1048576,
+      "format" : "png",
+      "milliseconds" : 4.1876666655298322,
+      "prepared" : true
+    },
+    {
+      "bytes" : 589824,
+      "format" : "webp",
+      "milliseconds" : 22.44383332435973,
+      "prepared" : true
+    },
+    {
+      "bytes" : 589824,
+      "format" : "avif",
+      "milliseconds" : 81.754458340583369,
+      "prepared" : true
+    },
+    {
+      "bytes" : 135600,
+      "format" : "gif",
+      "milliseconds" : 3.8030833238735795,
+      "prepared" : true
+    }
+  ]
+}

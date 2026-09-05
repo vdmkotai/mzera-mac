@@ -1,0 +1,8 @@
+{
+  "durationMS" : 12000,
+  "first20MeanMS" : 0.28927707753609866,
+  "frames" : 300,
+  "last20MeanMS" : 0.54418333456851542,
+  "resetWorks" : true,
+  "totalDecodeMS" : 123.49779158830643
+}

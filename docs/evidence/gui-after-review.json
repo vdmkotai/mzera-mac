@@ -1,0 +1,19 @@
+{
+  "cacheBytes": 129024000,
+  "completedSorts": 3,
+  "displayMaximumFPS": 120,
+  "entries": 75,
+  "folderOpenToFirstPreparedMS": 49.293791671516374,
+  "folderOpenToFirstPresentedMS": 83.93912500469014,
+  "frames": 718,
+  "handlerToPresentP50ms": 25.941541680367664,
+  "handlerToPresentP95ms": 26.052250002976507,
+  "lastCPUdrawMS": 11.429166654124856,
+  "peakDecodeJobs": 9,
+  "preparedNavigationSamples": 34,
+  "queuedDecodeJobs": 0,
+  "scanRunning": false,
+  "selected": 38,
+  "unchangedScans": 2,
+  "viewer": true
+}

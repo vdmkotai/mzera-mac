@@ -1,0 +1,30 @@
+{
+  "video": {
+    "audioSamples": 0,
+    "decodeSeconds": 0.09192395833088085,
+    "duration": 2,
+    "hardwareFrames": 60,
+    "lastPTS": 1.9666666666666666,
+    "seekToStart": true,
+    "videoFrames": 60
+  },
+  "animation": {
+    "durationMS": 12000,
+    "first20MeanMS": 0.016579167277086526,
+    "frames": 300,
+    "last20MeanMS": 0.014106248272582889,
+    "resetWorks": true,
+    "totalDecodeMS": 4.381541715702042
+  },
+  "apng": {
+    "audioSamples": 0,
+    "decodeSeconds": 0.00977666667313315,
+    "duration": 0,
+    "hardwareFrames": 0,
+    "lastPTS": 0.9,
+    "seekToStart": true,
+    "videoFrames": 10
+  },
+  "codesign": "passed",
+  "relocatedBundle": true
+}

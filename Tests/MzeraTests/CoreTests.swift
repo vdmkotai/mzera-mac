@@ -199,17 +199,25 @@ final class CoreTests: XCTestCase {
     XCTAssertTrue(CGImageDestinationFinalize(dest))
     let playback = Playback()
     let done = expectation(description: "Cancelled playback drains")
-    for i in 0..<30 {
-      DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.005) {
+    var received = 0
+    playback.onImage = { _ in
+      received += 1
+      if received == 1 {
+        playback.togglePause()
+        playback.stop()
         playback.startAnimation(path: gif.path, limit: 64, device: device)
+        return
       }
-    }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { playback.stop() }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-      withExtendedLifetime(playback) {}
+      playback.stop()
       done.fulfill()
     }
+    for _ in 0..<30 {
+      playback.startAnimation(path: gif.path, limit: 64, device: device)
+      playback.stop()
+    }
+    playback.startAnimation(path: gif.path, limit: 64, device: device)
     wait(for: [done], timeout: 3)
+    XCTAssertEqual(received, 2)
   }
   func testCatalogReplacementRemovesDeletedFilesAndKeepsOtherRoots() throws {
     let base = try temporary()
@@ -235,7 +243,7 @@ final class CoreTests: XCTestCase {
     let ordered = [entry("/a/z.jpg"), entry("/a/2.jpg"), entry("/a/10.jpg")]
     do {
       let catalog = Catalog(base: base)
-      catalog.queue.sync { catalog.save(root: "/a", entries: ordered, orderKey: "2|1") }
+      _ = catalog.queue.sync { catalog.save(root: "/a", entries: ordered, orderKey: "2|1") }
     }
     let reopened = Catalog(base: base)
     reopened.queue.sync {

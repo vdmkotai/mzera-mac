@@ -2,6 +2,44 @@ import AppKit
 import CMedia
 import Metal
 
+if let index = CommandLine.arguments.firstIndex(of: "--probe-animation"),
+  CommandLine.arguments.count > index + 1
+{
+  guard let decoder = mz_animation_open(CommandLine.arguments[index + 1]) else { exit(1) }
+  defer { mz_animation_close(decoder) }
+  var timings: [Double] = []
+  var totalDelay = 0
+  var width: Int32 = 0
+  var height: Int32 = 0
+  while true {
+    var pixels: UnsafePointer<UInt8>?
+    var delay: Int32 = 0
+    let start = ProcessInfo.processInfo.systemUptime
+    let result = mz_animation_next(decoder, &pixels, &width, &height, &delay)
+    if result == 0 { break }
+    guard result == 1 else { exit(1) }
+    timings.append((ProcessInfo.processInfo.systemUptime - start) * 1000)
+    totalDelay += Int(delay)
+  }
+  func mean(_ values: ArraySlice<Double>) -> Double {
+    values.reduce(0, +) / Double(max(1, values.count))
+  }
+  mz_animation_reset(decoder)
+  var pixels: UnsafePointer<UInt8>?
+  var delay: Int32 = 0
+  let resetWorks = mz_animation_next(decoder, &pixels, &width, &height, &delay) == 1
+  let info: [String: Any] = [
+    "frames": timings.count, "first20MeanMS": mean(timings.prefix(20)),
+    "last20MeanMS": mean(timings.suffix(20)), "totalDecodeMS": timings.reduce(0, +),
+    "durationMS": totalDelay, "resetWorks": resetWorks,
+  ]
+  print(
+    String(
+      data: try! JSONSerialization.data(
+        withJSONObject: info, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8)!)
+  exit(0)
+}
+
 if CommandLine.arguments.contains("--probe-video"),
   let index = CommandLine.arguments.firstIndex(of: "--probe-video"),
   CommandLine.arguments.count > index + 1
