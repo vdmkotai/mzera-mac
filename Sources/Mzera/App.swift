@@ -167,7 +167,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let view = NSMenu(title: "View")
     viewItem.submenu = view
     view.addItem(
-      withTitle: "Gallery / viewer (G)", action: #selector(toggleGallery), keyEquivalent: "g"
+      withTitle: "Gallery / viewer (G / C)", action: #selector(toggleGallery), keyEquivalent: "g"
     ).target =
       self
     view.addItem(
@@ -644,9 +644,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     if plain {
       // Physical keys keep working when the input layout is Russian.
       switch event.keyCode {
-      case 5:
+      case 5, 8:
         toggleGallery()
-        return true  // G
+        return true  // G / C
       case 17:
         togglePanels()
         return true  // T
@@ -980,7 +980,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   @objc private func help() {
     alert(
       "Keyboard shortcuts",
-      "F: full screen, no panels, #000000 background\nEsc: leave full screen; then return to gallery\nG / Enter: gallery ↔ viewer\nT: show/hide panels in windowed mode\nM: flat ↔ folders · V: sound on/off\nO: open folder · H / ?: this help\nArrows: browse\nOption ↑/↓: page in grid; ±10 in viewer\nOption ←/→: first/last file\nW: fit ↔ 1:1 · 0: fit · 1: actual pixels\n+ / −: zoom in viewer; thumbnail size in grid\nPinch: zoom · drag: pan\nSpace: pause video/animation; next photo\nShift+Space: previous photo\nShift ←/→: seek video ±5 seconds\nLetter shortcuts also work with Russian input."
+      "F: full screen, no panels, #000000 background\nEsc: leave full screen; then return to gallery\nG / C / Enter: gallery ↔ viewer\nT: show/hide panels in windowed mode\nM: flat ↔ folders · V: sound on/off\nO: open folder · H / ?: this help\nArrows: browse\nOption ↑/↓: page in grid; ±10 in viewer\nOption ←/→: first/last file\nW: fit ↔ 1:1 · 0: fit · 1: actual pixels\n+ / −: zoom in viewer; thumbnail size in grid\nPinch: zoom · drag: pan\nSpace: pause video/animation; next photo\nShift+Space: previous photo\nShift ←/→: seek video ±5 seconds\nLetter shortcuts also work with Russian input."
     )
   }
   @objc private func about() {
