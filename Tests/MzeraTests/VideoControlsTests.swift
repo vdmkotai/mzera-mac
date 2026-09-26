@@ -1,3 +1,4 @@
+import AppKit
 import CMedia
 import Metal
 import XCTest
@@ -20,6 +21,36 @@ final class VideoControlsTests: XCTestCase {
     MediaEntry(path: path, size: size, modified: 1, isVideo: true)
   }
 
+  func testControlsNeverResizeTheWindow() {
+    // Full screen sets the window to the display frame; the bar must fit inside it.
+    let window = NSWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 1512, height: 949), styleMask: [.borderless],
+      backing: .buffered, defer: true)
+    let content = NSView()
+    window.contentView = content
+    let video = NSView()
+    let controls = VideoControlsView()
+    for view in [video, controls] {
+      view.translatesAutoresizingMaskIntoConstraints = false
+      content.addSubview(view)
+    }
+    NSLayoutConstraint.activate(
+      [
+        video.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+        video.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+        video.topAnchor.constraint(equalTo: content.topAnchor),
+        video.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+      ] + controls.constraints(over: video))
+    window.setFrame(NSRect(x: 0, y: 0, width: 1512, height: 949), display: false)
+    window.layoutIfNeeded()
+    XCTAssertEqual(window.frame.width, 1512)
+    XCTAssertEqual(video.frame.width, 1512)
+    XCTAssertEqual(controls.frame.width, 720)
+    window.setFrame(NSRect(x: 0, y: 0, width: 600, height: 400), display: false)
+    window.layoutIfNeeded()
+    XCTAssertEqual(window.frame.width, 600)
+    XCTAssertEqual(controls.frame.width, 560)
+  }
   func testTimecodeFormatsElapsedTimeAndLength() {
     XCTAssertEqual(Timecode.text(0), "0:00")
     XCTAssertEqual(Timecode.text(7.9), "0:07")

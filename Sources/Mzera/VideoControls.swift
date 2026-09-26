@@ -87,6 +87,19 @@ final class VideoControlsView: NSView {
   }
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+  /// Bottom-centered over the video, at most 720 points wide.
+  func constraints(over video: NSView) -> [NSLayoutConstraint] {
+    let width = widthAnchor.constraint(equalTo: video.widthAnchor, constant: -40)
+    // Must stay below windowSizeStayPut, or Auto Layout shrinks the window to fit the bar.
+    width.priority = .defaultLow
+    return [
+      centerXAnchor.constraint(equalTo: video.centerXAnchor),
+      bottomAnchor.constraint(equalTo: video.bottomAnchor, constant: -20),
+      heightAnchor.constraint(equalToConstant: 40),
+      widthAnchor.constraint(lessThanOrEqualToConstant: 720),
+      width,
+    ]
+  }
   func update(position: Double, duration: Double) {
     let known = duration.isFinite && duration > 0
     if slider.isEnabled != known { slider.isEnabled = known }

@@ -267,9 +267,6 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       view.translatesAutoresizingMaskIntoConstraints = false
       content.addSubview(view)
     }
-    let controlsWidth = videoControls.widthAnchor.constraint(
-      equalTo: render.widthAnchor, constant: -40)
-    controlsWidth.priority = .defaultHigh
     windowedRenderConstraints = [
       render.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
       render.trailingAnchor.constraint(equalTo: scroller.leadingAnchor),
@@ -295,12 +292,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         status.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
         status.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -7),
         status.heightAnchor.constraint(equalToConstant: 16),
-        videoControls.centerXAnchor.constraint(equalTo: render.centerXAnchor),
-        videoControls.bottomAnchor.constraint(equalTo: render.bottomAnchor, constant: -20),
-        videoControls.heightAnchor.constraint(equalToConstant: 40),
-        videoControls.widthAnchor.constraint(lessThanOrEqualToConstant: 720),
-        controlsWidth,
-      ])
+      ] + videoControls.constraints(over: render))
   }
   private var current: MediaEntry? {
     render.entries.indices.contains(render.selected) ? render.entries[render.selected] : nil
