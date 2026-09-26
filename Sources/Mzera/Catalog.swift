@@ -11,6 +11,7 @@ final class Catalog {
   private(set) var lastSaveChangedRows = 0
   private var pendingCache: [String: (bytes: Int?, time: Double)] = [:]
   private var pendingFlush: DispatchWorkItem?
+  private var pendingDurations: [MediaEntry: Double] = [:]
   private var cacheBytes: Int64 = 0
 
   private struct Failure: Error { let message: String }
@@ -27,7 +28,7 @@ final class Catalog {
           SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil))
       try check(sqlite3_busy_timeout(db, 3000))
       try execute(
-        "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; CREATE TABLE IF NOT EXISTS media(root TEXT,path TEXT,size INTEGER,modified REAL,video INTEGER,PRIMARY KEY(root,path)); CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY); CREATE TABLE IF NOT EXISTS cache(key TEXT PRIMARY KEY,bytes INTEGER,touched REAL);"
+        "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; CREATE TABLE IF NOT EXISTS media(root TEXT,path TEXT,size INTEGER,modified REAL,video INTEGER,PRIMARY KEY(root,path)); CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY); CREATE TABLE IF NOT EXISTS cache(key TEXT PRIMARY KEY,bytes INTEGER,touched REAL); CREATE TABLE IF NOT EXISTS durations(path TEXT PRIMARY KEY,size INTEGER,modified REAL,seconds REAL);"
       )
       if try !columns("media").contains("position") {
         try execute("ALTER TABLE media ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
@@ -154,6 +155,13 @@ final class Catalog {
             changed += 1
           }
         }
+        try statement("DELETE FROM durations WHERE path=?") { s in
+          for e in previous where e.isVideo && !paths.contains(e.path) {
+            try check(sqlite3_reset(s))
+            try bind(s, 1, e.path)
+            _ = try step(s)
+          }
+        }
         try statement(
           "INSERT INTO media(root,path,size,modified,video,position) VALUES(?,?,?,?,?,?) ON CONFLICT(root,path) DO UPDATE SET size=excluded.size,modified=excluded.modified,video=excluded.video,position=excluded.position"
         ) { s in
@@ -191,32 +199,85 @@ final class Catalog {
       return false
     }
   }
+  /// Video durations under root that still match the file's size and modification time.
+  func durations(root: String, entries: [MediaEntry]) -> [MediaEntry: Double] {
+    guard !entries.isEmpty else { return [:] }
+    let prefix = root.hasSuffix("/") ? root : root + "/"
+    let byPath = Dictionary(
+      entries.filter(\.isVideo).map { ($0.path, $0) }, uniquingKeysWith: { a, _ in a })
+    guard !byPath.isEmpty else { return [:] }
+    do {
+      // "0" follows "/" in byte order, so the range covers exactly the paths under root.
+      return try statement(
+        "SELECT path,size,modified,seconds FROM durations WHERE path>=? AND path<?"
+      ) { s in
+        try bind(s, 1, prefix)
+        try bind(s, 2, String(prefix.dropLast()) + "0")
+        var result: [MediaEntry: Double] = [:]
+        while try step(s) {
+          guard let raw = sqlite3_column_text(s, 0),
+            let entry = byPath[String(cString: raw)],
+            entry.size == sqlite3_column_int64(s, 1),
+            entry.modified == sqlite3_column_double(s, 2)
+          else { continue }
+          result[entry] = sqlite3_column_double(s, 3)
+        }
+        return result
+      }
+    } catch {
+      report(error)
+      return [:]
+    }
+  }
+  /// Batched with cache bookkeeping; 0 records a length that could not be read.
+  func saveDuration(_ entry: MediaEntry, seconds: Double) {
+    queue.async { [self] in
+      guard db != nil else { return }
+      pendingDurations[entry] = seconds
+      scheduleFlush()
+    }
+  }
   func noteCache(key: String, bytes: Int) { enqueueCache(key: key, bytes: max(0, bytes)) }
   func touchCache(key: String) { enqueueCache(key: key, bytes: nil) }
   private func enqueueCache(key: String, bytes: Int?) {
     queue.async { [self] in
       guard db != nil else { return }
       pendingCache[key] = (bytes ?? pendingCache[key]?.bytes, Date.timeIntervalSinceReferenceDate)
-      if pendingCache.count >= 128 {
-        flushCache()
-        return
-      }
-      guard pendingFlush == nil else { return }
-      let job = DispatchWorkItem { [weak self] in self?.flushCache() }
-      pendingFlush = job
-      queue.asyncAfter(deadline: .now() + 2, execute: job)
+      scheduleFlush()
     }
+  }
+  private func scheduleFlush() {
+    if pendingCache.count + pendingDurations.count >= 128 {
+      flushCache()
+      return
+    }
+    guard pendingFlush == nil else { return }
+    let job = DispatchWorkItem { [weak self] in self?.flushCache() }
+    pendingFlush = job
+    queue.asyncAfter(deadline: .now() + 2, execute: job)
   }
   func flushCache() {
     pendingFlush?.cancel()
     pendingFlush = nil
-    guard !pendingCache.isEmpty else { return }
+    guard !pendingCache.isEmpty || !pendingDurations.isEmpty else { return }
     let pending = pendingCache
+    let durations = pendingDurations
     pendingCache.removeAll(keepingCapacity: true)
+    pendingDurations.removeAll(keepingCapacity: true)
     do {
       try execute("BEGIN IMMEDIATE")
       var delta: Int64 = 0
       do {
+        try statement("INSERT OR REPLACE INTO durations VALUES(?,?,?,?)") { s in
+          for (entry, seconds) in durations {
+            try check(sqlite3_reset(s))
+            try bind(s, 1, entry.path)
+            try check(sqlite3_bind_int64(s, 2, entry.size))
+            try check(sqlite3_bind_double(s, 3, entry.modified))
+            try check(sqlite3_bind_double(s, 4, seconds))
+            _ = try step(s)
+          }
+        }
         for (key, value) in pending {
           if let bytes = value.bytes {
             let old: Int64 = try statement("SELECT bytes FROM cache WHERE key=?") { s in

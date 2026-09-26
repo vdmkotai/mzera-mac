@@ -44,6 +44,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   private let sound = NSButton(title: "Sound off", target: nil, action: nil)
   private let pause = NSButton(title: "Pause", target: nil, action: nil)
   private let scroller = NSScroller()
+  private let videoControls = VideoControlsView()
   private let toolbar = NSStackView()
   private var windowedRenderConstraints: [NSLayoutConstraint] = []
   private var fullscreenRenderConstraints: [NSLayoutConstraint] = []
@@ -89,6 +90,18 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       self?.scheduleSave()
     }
     render.onKey = { [weak self] e in self?.key(e) ?? false }
+    render.onMouseMoved = { [weak self] in self?.revealVideoControls() }
+    render.onMouseExited = { [weak self] in
+      guard let self, !self.videoControls.scrubbing else { return }
+      self.videoControls.hide()
+    }
+    videoControls.onTogglePause = { [weak self] in self?.togglePause() }
+    videoControls.onToggleSound = { [weak self] in self?.toggleSound() }
+    videoControls.onSeek = { [weak self] seconds in self?.playback.seek(to: seconds) }
+    videoControls.onIdle = { [weak self] in
+      // In full screen the pointer disappears together with the controls.
+      if self?.window.isImmersive == true { NSCursor.setHiddenUntilMouseMoves(true) }
+    }
     cache.didPrepare = { [weak self] path in
       guard let self else { return }
       self.render.needsDisplay = true
@@ -109,6 +122,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       }
       self.markFirstContent()
       self.titleField.toolTip = hw ? "VideoToolbox frame" : "Software decoder"
+      if self.videoControls.shown {
+        self.videoControls.update(
+          position: self.playback.position, duration: self.playback.duration)
+      }
     }
     playback.onImage = { [weak self] image in
       self?.render.photo = image
@@ -246,10 +263,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     scroller.target = self
     scroller.action = #selector(scrollbar)
     scroller.scrollerStyle = .legacy
-    for view in [toolbar, render!, status, scroller] {
+    for view in [toolbar, render!, status, scroller, videoControls] {
       view.translatesAutoresizingMaskIntoConstraints = false
       content.addSubview(view)
     }
+    let controlsWidth = videoControls.widthAnchor.constraint(
+      equalTo: render.widthAnchor, constant: -40)
+    controlsWidth.priority = .defaultHigh
     windowedRenderConstraints = [
       render.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
       render.trailingAnchor.constraint(equalTo: scroller.leadingAnchor),
@@ -275,6 +295,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         status.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
         status.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -7),
         status.heightAnchor.constraint(equalToConstant: 16),
+        videoControls.centerXAnchor.constraint(equalTo: render.centerXAnchor),
+        videoControls.bottomAnchor.constraint(equalTo: render.bottomAnchor, constant: -20),
+        videoControls.heightAnchor.constraint(equalToConstant: 40),
+        videoControls.widthAnchor.constraint(lessThanOrEqualToConstant: 720),
+        controlsWidth,
       ])
   }
   private var current: MediaEntry? {
@@ -313,6 +338,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     requiresFullScan = false
     pendingRescan?.cancel()
     playback.stop()
+    videoControls.available = false
     animationPath = nil
     cache.clear()
     all = []
@@ -340,9 +366,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       guard let self, !token.cancelled else { return }
       let cached = self.catalog.load(root: rootPath)
       let cachedOrder = self.catalog.orderKey(root: rootPath)
+      let durations = self.catalog.durations(root: rootPath, entries: cached ?? [])
       DispatchQueue.main.async {
         guard self.scanID == id, !token.cancelled else { return }
         self.rootCatalogReady = true
+        self.cache.installDurations(durations)
         if let cached {
           self.all = cached
           self.allOrderKey = cachedOrder
@@ -587,6 +615,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     titleField.toolTip = nil
     if entry.isVideo { playback.startVideo(path: entry.path) } else { showPrepared() }
     pause.title = "Pause"
+    videoControls.available = entry.isVideo
+    videoControls.update(position: 0, duration: cache.duration(entry) ?? 0)
+    videoControls.update(paused: false, muted: playback.muted)
     refreshRequests()
     updateScroller()
     updateStatus()
@@ -616,6 +647,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   @objc func showGallery() {
     if window.isImmersive { setFullscreen(false) }
     playback.stop()
+    videoControls.available = false
     animationPath = nil
     loadError = nil
     render.viewer = false
@@ -699,7 +731,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       if option {
         selectBoundary(0)
       } else if (command || shift) && render.viewer && current?.isVideo == true {
-        playback.seek(by: -5)
+        seekVideo(by: -5)
       } else {
         move(-1)
       }
@@ -708,7 +740,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
       if option {
         selectBoundary(render.entries.count - 1)
       } else if (command || shift) && render.viewer && current?.isVideo == true {
-        playback.seek(by: 5)
+        seekVideo(by: 5)
       } else {
         move(1)
       }
@@ -767,6 +799,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     return false
   }
+  private func seekVideo(by delta: Double) {
+    playback.seek(by: delta)
+    revealVideoControls()
+  }
+  private func revealVideoControls() {
+    guard videoControls.available else { return }
+    let duration = playback.duration > 0 ? playback.duration : current.flatMap(cache.duration)
+    videoControls.update(position: playback.position, duration: duration ?? 0)
+    videoControls.reveal()
+  }
   private func move(_ delta: Int) { selectBoundary(render.selected + delta) }
   private func movePage(_ direction: Int) {
     let step =
@@ -809,12 +851,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   @objc private func toggleSound() {
     playback.muted.toggle()
     sound.title = playback.muted ? "Sound off" : "Sound on"
+    videoControls.update(paused: playback.paused, muted: playback.muted)
     scheduleSave()
     window.makeFirstResponder(render)
   }
   @objc private func togglePause() {
     playback.togglePause()
     pause.title = playback.paused ? "Play" : "Pause"
+    videoControls.update(paused: playback.paused, muted: playback.muted)
     window.makeFirstResponder(render)
   }
   @objc private func fullscreen() {
@@ -980,7 +1024,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
   @objc private func help() {
     alert(
       "Keyboard shortcuts",
-      "F: full screen, no panels, #000000 background\nEsc: leave full screen; then return to gallery\nG / C / Enter: gallery ↔ viewer\nT: show/hide panels in windowed mode\nM: flat ↔ folders · V: sound on/off\nO: open folder · H / ?: this help\nArrows: browse\nOption ↑/↓: page in grid; ±10 in viewer\nOption ←/→: first/last file\nW: fit ↔ 1:1 · 0: fit · 1: actual pixels\n+ / −: zoom in viewer; thumbnail size in grid\nPinch: zoom · drag: pan\nSpace: pause video/animation; next photo\nShift+Space: previous photo\nShift ←/→: seek video ±5 seconds\nLetter shortcuts also work with Russian input."
+      "F: full screen, no panels, #000000 background\nEsc: leave full screen; then return to gallery\nG / C / Enter: gallery ↔ viewer\nT: show/hide panels in windowed mode\nM: flat ↔ folders · V: sound on/off\nO: open folder · H / ?: this help\nArrows: browse\nOption ↑/↓: page in grid; ±10 in viewer\nOption ←/→: first/last file\nW: fit ↔ 1:1 · 0: fit · 1: actual pixels\n+ / −: zoom in viewer; thumbnail size in grid\nPinch: zoom · drag: pan\nSpace: pause video/animation; next photo\nShift+Space: previous photo\nShift ←/→: seek video ±5 seconds\nMove the mouse over a video: play/pause, timeline, sound\nLetter shortcuts also work with Russian input."
     )
   }
   @objc private func about() {

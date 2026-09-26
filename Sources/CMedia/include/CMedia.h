@@ -22,6 +22,7 @@ int mz_next(MZDecoder *decoder, MZFrame *frame); // 1 frame, 0 EOF, -1 error
 int mz_seek(MZDecoder *decoder, double seconds);
 void mz_close(MZDecoder *decoder);
 double mz_duration(MZDecoder *decoder);
+double mz_probe_duration(const char *path); // Without opening decoders; -1 on error, 0 unknown.
 void mz_set_audio_enabled(MZDecoder *decoder, int enabled);
 void mz_set_video_limit(MZDecoder *decoder, int limit); // Software export size; 0 = full.
 

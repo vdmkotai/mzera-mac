@@ -67,10 +67,13 @@ enum ImageDecoder {
     return PreparedImage(
       texture: texture, width: w, height: h, animated: animated, sourceMax: sourceMax)
   }
-  static func videoThumbnail(path: String, limit: Int, device: MTLDevice) -> PreparedImage? {
+  static func videoThumbnail(
+    path: String, limit: Int, device: MTLDevice, duration: inout Double?
+  ) -> PreparedImage? {
     var error = [CChar](repeating: 0, count: 256)
     guard let decoder = mz_open(path, 0, 0, &error, 256) else { return nil }
     defer { mz_close(decoder) }
+    duration = mz_duration(decoder)
     mz_set_video_limit(decoder, Int32(limit))
     var frame = MZFrame()
     guard mz_next(decoder, &frame) == 1, let raw = frame.pixel else { return nil }
@@ -137,6 +140,11 @@ final class MediaCache {
   private var active: Set<Key> = []
   private var failures: [Key: Failure] = [:]
   private var fullSizePhotos: [MediaEntry: Key] = [:]
+  /// Container durations of videos, filled by thumbnail jobs and the persistent catalog.
+  /// Zero marks a length that could not be read, so it is not probed again.
+  private var durations: [MediaEntry: Double] = [:]
+  private var probing: Set<MediaEntry> = []
+  private let probes = DispatchQueue(label: "mzera.duration-probe", qos: .utility)
   private var configuredPhotoBudget = 1024 * 1024 * 1024
   private var underPressure = false
   private var inFlightBytes = 0
@@ -189,6 +197,10 @@ final class MediaCache {
   func peek(_ e: MediaEntry, limit: Int) -> PreparedImage? {
     (limit <= 512 ? thumbnails : photos).peek(Self.key(e, limit: limit))
   }
+  func duration(_ e: MediaEntry) -> Double? { durations[e].flatMap { $0 > 0 ? $0 : nil } }
+  func installDurations(_ known: [MediaEntry: Double]) {
+    durations.merge(known) { current, _ in current }
+  }
   func request(_ requests: [Request]) {
     var seen = Set<Key>()
     wanted = requests.filter { seen.insert($0.key).inserted }
@@ -199,6 +211,8 @@ final class MediaCache {
     wanted = []
     wantedKeys.removeAll()
     fullSizePhotos.removeAll()
+    durations.removeAll()
+    probing.removeAll()
     thumbnails.clear()
     photos.clear()
     failures.removeAll()
@@ -235,8 +249,10 @@ final class MediaCache {
       if request.entry.isVideo { videoJobs += 1 } else { imageJobs += 1 }
       peakJobs = max(peakJobs, imageJobs + videoJobs)
       let queue = request.entry.isVideo ? videos : workers
+      let needsDuration = request.entry.isVideo && durations[request.entry] == nil
       queue.async { [weak self] in
         guard let self else { return }
+        var duration: Double?
         let result: PreparedImage? = autoreleasepool {
           let diskKey =
             SHA256.hash(data: Data(key.diskText.utf8)).map { String(format: "%02x", $0) }.joined()
@@ -251,7 +267,8 @@ final class MediaCache {
           }
           if request.entry.isVideo {
             let prepared = ImageDecoder.videoThumbnail(
-              path: request.entry.path, limit: request.limit, device: self.device)
+              path: request.entry.path, limit: request.limit, device: self.device,
+              duration: &duration)
             if let prepared, let image = ImageDecoder.bitmap(prepared) {
               self.persist(image, to: cacheURL, key: diskKey)
             }
@@ -268,7 +285,13 @@ final class MediaCache {
           }
           return prepared
         }
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [duration] in
+          if needsDuration {
+            // A thumbnail from the disk cache is shown first; its length is read afterwards.
+            if let duration { self.record(duration, for: request.entry) } else {
+              self.probeDuration(request.entry)
+            }
+          }
           self.active.remove(key)
           self.inFlightBytes -= reserved
           if request.entry.isVideo { self.videoJobs -= 1 } else { self.imageJobs -= 1 }
@@ -297,6 +320,24 @@ final class MediaCache {
     }
     // Keep the desired set (including active jobs) for generation checks on completion.
     queuedCount = remaining.count
+  }
+  private func record(_ seconds: Double, for entry: MediaEntry) {
+    guard durations[entry] == nil else { return }
+    let value = seconds.isFinite && seconds > 0 ? seconds : 0
+    durations[entry] = value
+    catalog.saveDuration(entry, seconds: value)
+  }
+  private func probeDuration(_ entry: MediaEntry) {
+    guard durations[entry] == nil, probing.insert(entry).inserted else { return }
+    probes.async { [weak self] in
+      let seconds = mz_probe_duration(entry.path)
+      DispatchQueue.main.async {
+        guard let self else { return }
+        self.probing.remove(entry)
+        self.record(seconds, for: entry)
+        if seconds > 0 { self.didPrepare?(entry.path) }
+      }
+    }
   }
   private func persist(_ image: CGImage, to url: URL, key: String) {
     // Never wait for an encoder/writer before delivering a ready thumbnail.

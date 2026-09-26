@@ -227,6 +227,22 @@ int mz_seek(MZDecoder *d, double seconds) {
     return 1;
 }
 double mz_duration(MZDecoder *d) { return d->format->duration == AV_NOPTS_VALUE ? 0 : d->format->duration/(double)AV_TIME_BASE; }
+double mz_probe_duration(const char *path) {
+    AVFormatContext *format = NULL;
+    AVDictionary *options = NULL;
+    av_dict_set(&options, "protocol_whitelist", "file", 0);
+    int result = avformat_open_input(&format, path, NULL, &options);
+    av_dict_free(&options);
+    if (result < 0) return -1;
+    // Most containers carry the duration in the header; stream probing is the slow fallback.
+    if (format->duration == AV_NOPTS_VALUE && avformat_find_stream_info(format, NULL) < 0) {
+        avformat_close_input(&format);
+        return -1;
+    }
+    double seconds = format->duration == AV_NOPTS_VALUE ? 0 : format->duration/(double)AV_TIME_BASE;
+    avformat_close_input(&format);
+    return seconds;
+}
 void mz_set_audio_enabled(MZDecoder *d, int enabled) { d->audio_enabled = enabled; }
 void mz_set_video_limit(MZDecoder *d, int limit) { d->video_limit = limit; }
 void mz_close(MZDecoder *d) {

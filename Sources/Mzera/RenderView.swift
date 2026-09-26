@@ -27,6 +27,8 @@ final class RenderView: MTKView, MTKViewDelegate {
   private var textureCache: CVMetalTextureCache?
   private var labels: [NSTextField] = []
   private var headerTitles: [String: String] = [:]
+  private var badges: [String: PreparedImage] = [:]
+  private var badgeScale: CGFloat = 0
   private var vertexBuffers: [MTLBuffer?] = [nil, nil, nil]
   private let frameSlots = DispatchSemaphore(value: 3)
   private var frameSlot = 0
@@ -53,6 +55,8 @@ final class RenderView: MTKView, MTKViewDelegate {
   var onOpen: ((Int) -> Void)?
   var onSelect: ((Int) -> Void)?
   var onKey: ((NSEvent) -> Bool)?
+  var onMouseMoved: (() -> Void)?
+  var onMouseExited: (() -> Void)?
   private var dragPoint = CGPoint.zero
   private(set) var renderedFrames = 0
   private(set) var lastDrawMilliseconds = 0.0
@@ -110,6 +114,10 @@ final class RenderView: MTKView, MTKViewDelegate {
     (layer as? CAMetalLayer)?.maximumDrawableCount = 2
     (layer as? CAMetalLayer)?.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
     CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
+    addTrackingArea(
+      NSTrackingArea(
+        rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+        owner: self, userInfo: nil))
   }
   required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
   func install(entries: [MediaEntry], layout: GridLayout, grouped: Bool) {
@@ -248,22 +256,35 @@ final class RenderView: MTKView, MTKViewDelegate {
         let entry = entries[index]
         let rect = layout.rect(at: index).offsetBy(dx: 0, dy: -offset)
         quad(rect, white, SIMD4(0.11, 0.12, 0.14, 1))
+        var thumbRect: CGRect?
         if let thumb = cache?.peek(entry, limit: thumbnailLimit) ?? cache?.peek(entry, limit: 512) {
           drewMedia = true
           let scale = min(rect.width / Double(thumb.width), rect.height / Double(thumb.height))
           let w = Double(thumb.width) * scale
           let h = Double(thumb.height) * scale
-          quad(
-            CGRect(x: rect.midX - w / 2, y: rect.midY - h / 2, width: w, height: h), thumb.texture)
+          thumbRect = CGRect(x: rect.midX - w / 2, y: rect.midY - h / 2, width: w, height: h)
+          quad(thumbRect!, thumb.texture)
         } else if cache?.isFailed(entry, limit: thumbnailLimit) == true {
           quad(
             CGRect(x: rect.midX - 7, y: rect.midY - 1, width: 14, height: 2), white,
             SIMD4(0.8, 0.35, 0.35, 1))
         }
         if entry.isVideo {
-          quad(
-            CGRect(x: rect.minX + 6, y: rect.maxY - 12, width: 18, height: 6), white,
-            SIMD4(0.3, 0.7, 0.95, 1))
+          if let seconds = cache?.duration(entry), let badge = badge(Timecode.length(seconds)) {
+            // Bottom-right corner of the visible picture, or of the tile before it loads.
+            let scale = Double(badgeScale)
+            let w = Double(badge.width) / scale
+            let h = Double(badge.height) / scale
+            let area = thumbRect ?? rect
+            // Whole backing pixels keep the text crisp under linear sampling.
+            let x = (max(rect.minX + 4, area.maxX - w - 5) * scale).rounded() / scale
+            let y = ((area.maxY - h - 5) * scale).rounded() / scale
+            quad(CGRect(x: x, y: y, width: w, height: h), badge.texture)
+          } else {
+            quad(
+              CGRect(x: rect.minX + 6, y: rect.maxY - 12, width: 18, height: 6), white,
+              SIMD4(0.3, 0.7, 0.95, 1))
+          }
         }
         if index == selected {
           let c = SIMD4<Float>(0.3, 0.7, 1, 1)
@@ -314,6 +335,47 @@ final class RenderView: MTKView, MTKViewDelegate {
     frameSlot = (frameSlot + 1) % vertexBuffers.count
     renderedFrames += 1
     lastDrawMilliseconds = (ProcessInfo.processInfo.systemUptime - start) * 1000
+  }
+  /// Pill with a video length; few distinct strings exist, so textures are kept per text.
+  private func badge(_ text: String) -> PreparedImage? {
+    let scale = window?.backingScaleFactor ?? 2
+    if scale != badgeScale || badges.count > 512 {
+      badges.removeAll()
+      badgeScale = scale
+    }
+    if let image = badges[text] { return image }
+    guard let device else { return nil }
+    let string = NSAttributedString(
+      string: text,
+      attributes: [
+        .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold),
+        .foregroundColor: NSColor.white,
+      ])
+    let size = CGSize(width: ceil(string.size().width) + 10, height: 16)
+    guard
+      let context = CGContext(
+        data: nil, width: Int(size.width * scale), height: Int(size.height * scale),
+        bitsPerComponent: 8, bytesPerRow: 0, space: ImageDecoder.colorSpace,
+        bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+          | CGBitmapInfo.byteOrder32Little.rawValue)
+    else { return nil }
+    context.scaleBy(x: scale, y: scale)
+    context.setFillColor(NSColor(calibratedWhite: 0, alpha: 0.72).cgColor)
+    context.addPath(
+      CGPath(
+        roundedRect: CGRect(origin: .zero, size: size), cornerWidth: 4, cornerHeight: 4,
+        transform: nil))
+    context.fillPath()
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+    let textHeight = string.size().height
+    string.draw(at: CGPoint(x: 5, y: (size.height - textHeight) / 2))
+    NSGraphicsContext.restoreGraphicsState()
+    guard let image = context.makeImage(),
+      let prepared = ImageDecoder.prepare(image, device: device)
+    else { return nil }
+    badges[text] = prepared
+    return prepared
   }
   private func fitted(width: Int, height: Int) -> CGRect {
     let fit = min(bounds.width / Double(width), bounds.height / Double(height))
@@ -444,6 +506,8 @@ final class RenderView: MTKView, MTKViewDelegate {
       width: video?.width ?? photo?.width ?? 1, height: video?.height ?? photo?.height ?? 1)
     pan = ViewGeometry.clampedPan(pan, image: size, viewport: bounds.size, scale: zoom)
   }
+  override func mouseMoved(with event: NSEvent) { onMouseMoved?() }
+  override func mouseExited(with event: NSEvent) { onMouseExited?() }
   override func keyDown(with event: NSEvent) {
     if onKey?(event) != true { super.keyDown(with: event) }
   }

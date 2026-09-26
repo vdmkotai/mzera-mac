@@ -31,8 +31,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>Mzera</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.2.1</string>
-<key>CFBundleVersion</key><string>5</string>
+<key>CFBundleShortVersionString</key><string>0.3.0</string>
+<key>CFBundleVersion</key><string>6</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.photography</string>
 <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Vadym Kotai</string>
 <key>LSMinimumSystemVersion</key><string>26.0</string>

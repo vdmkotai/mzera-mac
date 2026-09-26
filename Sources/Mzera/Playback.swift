@@ -10,6 +10,8 @@ final class Playback {
   private var player: AVAudioPlayerNode?
   private let audioFormat = AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2)!
   private var seekPosition: Double?
+  /// Bumped by every seek; frames decoded for an older request are dropped.
+  private var seekGeneration = 0
   private var pausedValue = false
   private let lock = NSCondition()
   private var audioEnabled = false
@@ -28,6 +30,11 @@ final class Playback {
     lock.lock()
     defer { lock.unlock() }
     return pausedValue
+  }
+  private var currentGeneration: Int {
+    lock.lock()
+    defer { lock.unlock() }
+    return seekGeneration
   }
   var onVideo: ((CVPixelBuffer, Bool, Bool, Bool, Bool, Double) -> Void)?
   var onImage: ((PreparedImage) -> Void)?
@@ -59,13 +66,19 @@ final class Playback {
     lock.unlock()
     if pause { player?.pause() } else { player?.play() }
   }
-  func seek(by delta: Double) {
+  func seek(by delta: Double) { seek(to: position + delta) }
+  /// Rapid calls collapse: the decoder only honors the latest requested position.
+  func seek(to seconds: Double) {
+    let target = max(0, min(max(0, duration - 0.01), seconds))
     lock.lock()
-    seekPosition = max(0, min(max(0, duration - 0.01), position + delta))
+    seekPosition = target
+    seekGeneration += 1
+    let paused = pausedValue
     lock.broadcast()
     lock.unlock()
+    position = target
     player?.stop()
-    player?.play()
+    if !paused { player?.play() }
   }
   private func audioSetup() {
     let engine = AVAudioEngine()
@@ -129,18 +142,44 @@ final class Playback {
       var origin: Double?
       var seekFloor = 0.0
       var framesThisLoop = 0
+      var generation = self.currentGeneration
+      // The first frame after a seek is shown at once, even when paused meanwhile.
+      var seekFramePending = false
+      // A seek into the tail after the last frame shows that frame instead of wrapping.
+      var lastBeforeFloor: (MZFrame, CVPixelBuffer)?
+      func present(_ frame: MZFrame, _ pixel: CVPixelBuffer) -> Bool {
+        let seconds = frame.seconds
+        let full = frame.full_range != 0
+        let bt601 = frame.bt601 != 0
+        let bt2020 = frame.bt2020 != 0
+        let hardware = frame.hardware != 0
+        guard let permit = FramePermit(gate: gate, token: token), !token.cancelled else {
+          return false
+        }
+        DispatchQueue.main.async { [pixel, permit, generation] in
+          defer { withExtendedLifetime(permit) {} }
+          guard !token.cancelled, generation == self.currentGeneration else { return }
+          self.position = seconds
+          self.onVideo?(pixel, full, bt601, bt2020, hardware, seconds)
+        }
+        return true
+      }
       while !token.cancelled {
         self.lock.lock()
         let seek = self.seekPosition
         self.seekPosition = nil
+        let seekGeneration = self.seekGeneration
         self.lock.unlock()
         if let seek {
           _ = mz_seek(decoder, seek)
           origin = nil
           seekFloor = seek
           framesThisLoop = 0
+          generation = seekGeneration
+          seekFramePending = true
+          lastBeforeFloor = nil
         }
-        if self.paused {
+        if self.paused && !seekFramePending {
           guard let elapsed = self.wait(until: ProcessInfo.processInfo.systemUptime, token: token)
           else { continue }
           if let old = origin { origin = old + elapsed }
@@ -151,15 +190,24 @@ final class Playback {
         mz_set_audio_enabled(decoder, audioEnabled ? 1 : 0)
         var frame = MZFrame()
         let result = mz_next(decoder, &frame)
+        if result == 0, seekFramePending, let (last, pixel) = lastBeforeFloor {
+          seekFramePending = false
+          lastBeforeFloor = nil
+          origin = nil
+          framesThisLoop += 1
+          guard present(last, pixel) else { break }
+          continue
+        }
         if result <= 0 {
-          if result == 0 && framesThisLoop > 0 && mz_seek(decoder, 0) == 1 {
+          // A seek past the last frame also wraps to the start instead of reporting no frames.
+          if result == 0 && (framesThisLoop > 0 || seekFloor > 0) && mz_seek(decoder, 0) == 1 {
             origin = nil
             seekFloor = 0
             framesThisLoop = 0
             DispatchQueue.main.async {
               if !token.cancelled {
                 self.player?.stop()
-                self.player?.play()
+                if !self.paused { self.player?.play() }
                 self.onLoop?()
               }
             }
@@ -172,7 +220,22 @@ final class Playback {
           }
           break
         }
-        guard frame.seconds + 0.001 >= seekFloor else { continue }
+        guard frame.seconds + 0.001 >= seekFloor else {
+          if seekFramePending, frame.kind == 1, let raw = frame.pixel {
+            lastBeforeFloor = (frame, raw.takeUnretainedValue())
+          }
+          continue
+        }
+        if seekFramePending && (frame.kind == 1 || self.paused) {
+          // While paused, audio before the target frame is dropped.
+          guard frame.kind == 1, let raw = frame.pixel else { continue }
+          seekFramePending = false
+          lastBeforeFloor = nil
+          if self.paused { origin = nil }
+          framesThisLoop += 1
+          guard present(frame, raw.takeUnretainedValue()) else { break }
+          continue
+        }
         if frame.kind == 2 && frame.samples == 0 { continue }
         let seconds = frame.seconds
         if origin == nil { origin = ProcessInfo.processInfo.systemUptime - seconds + 0.025 }
@@ -187,17 +250,7 @@ final class Playback {
           framesThisLoop += 1
           // Skip late frames rather than accumulate a presentation backlog.
           if ProcessInfo.processInfo.systemUptime - target > 0.15 { continue }
-          let full = frame.full_range != 0
-          let bt601 = frame.bt601 != 0
-          let bt2020 = frame.bt2020 != 0
-          let hardware = frame.hardware != 0
-          guard let permit = FramePermit(gate: gate, token: token), !token.cancelled else { break }
-          DispatchQueue.main.async { [pixel, permit] in
-            defer { withExtendedLifetime(permit) {} }
-            guard !token.cancelled else { return }
-            self.position = seconds
-            self.onVideo?(pixel, full, bt601, bt2020, hardware, seconds)
-          }
+          guard present(frame, pixel) else { break }
         } else if frame.kind == 2, frame.samples > 0, let l = frame.left, let r = frame.right,
           let buffer = AVAudioPCMBuffer(
             pcmFormat: self.audioFormat, frameCapacity: AVAudioFrameCount(frame.samples))
